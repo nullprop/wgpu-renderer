@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use cgmath::num_traits::clamp;
-use winit::event::*;
+use winit::{dpi::PhysicalPosition, event::*};
 
 pub struct Camera {
     pub position: cgmath::Point3<f32>,
@@ -211,6 +211,24 @@ impl CameraController {
                         _ => false,
                     }
                 }
+                WindowEvent::MouseWheel { delta, .. } => match delta {
+                    MouseScrollDelta::LineDelta(_, scroll) => {
+                        if *scroll > 0.0 {
+                            self.speed *= 2.0;
+                        } else {
+                            self.speed /= 2.0;
+                        }
+                        return true;
+                    }
+                    MouseScrollDelta::PixelDelta(PhysicalPosition { y: scroll, .. }) => {
+                        if *scroll > 0.0 {
+                            self.speed *= 2.0;
+                        } else {
+                            self.speed /= 2.0;
+                        }
+                        return true;
+                    }
+                },
                 _ => false,
             },
         };
