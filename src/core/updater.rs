@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use super::state::State;
 use winit::{
     event::*,
@@ -9,16 +11,19 @@ pub async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
     let mut state = State::new(&window).await;
+    let mut last_render = Instant::now();
 
     // Event loop
     event_loop.run(move |event, _, control_flow| {
         match event {
+            Event::DeviceEvent { ref event, .. } => {
+                state.input(None, Some(event));
+            }
             Event::WindowEvent {
                 ref event,
                 window_id,
             } if window_id == window.id() => {
-                if !state.input(event) {
-                    // UPDATED!
+                if !state.input(Some(event), None) {
                     match event {
                         WindowEvent::CloseRequested
                         | WindowEvent::KeyboardInput {
@@ -36,13 +41,15 @@ pub async fn run() {
                         WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                             state.resize(**new_inner_size);
                         }
-                        WindowEvent::CursorMoved { position, .. } => {}
                         _ => {}
                     }
                 }
             }
             Event::RedrawRequested(window_id) if window_id == window.id() => {
-                state.update();
+                let now = Instant::now();
+                let dt = now - last_render;
+                last_render = now;
+                state.update(dt);
                 match state.render() {
                     Ok(_) => {}
                     // Reconfigure the surface if lost

@@ -1,7 +1,6 @@
-mod surf;
+mod core;
 
 fn main() {
     env_logger::init();
-    pollster::block_on(surf::updater::run());
+    pollster::block_on(core::updater::run());
 }
-
