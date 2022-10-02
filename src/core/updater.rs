@@ -10,6 +10,9 @@ use winit::{
 pub async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
+    window.set_cursor_grab(true).unwrap();
+    window.set_cursor_visible(false);
+    window.set_decorations(false);
     let mut state = State::new(&window).await;
     let mut last_render = Instant::now();
 
