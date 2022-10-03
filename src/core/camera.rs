@@ -53,12 +53,6 @@ impl Camera {
         return cgmath::Matrix4::look_to_rh(self.position, forward, up);
     }
 
-    pub fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
-        let view = self.get_view_matrix();
-        let proj = self.projection.get_matrix();
-        return proj * view;
-    }
-
     pub fn get_vecs(
         &self,
     ) -> (
@@ -72,33 +66,28 @@ impl Camera {
         let forward =
             cgmath::Vector3::new(pitch_cos * yaw_cos, pitch_sin, pitch_cos * yaw_sin).normalize();
         let right = cgmath::Vector3::new(-yaw_sin, 0.0, yaw_cos).normalize();
-        let up = forward.cross(right);
+        let up = right.cross(forward);
         return (forward, right, up);
     }
 
     pub fn update(&mut self, dt: Duration, controller: &CameraController) {
         let dt = dt.as_secs_f32();
         self.pitch = clamp(
-            self.pitch + controller.deltay * controller.sensitivity * 0.022,
+            self.pitch - controller.deltay * controller.sensitivity * 0.022,
             -89.0,
             89.0,
         );
-        self.yaw -= controller.deltax * controller.sensitivity * 0.022;
+        self.yaw += controller.deltax * controller.sensitivity * 0.022;
         self.yaw = self.yaw % 360.0;
         if self.yaw < 0.0 {
             self.yaw = 360.0 + self.yaw;
         }
-        println!(
-            "pitch: {:.6}, yaw: {:.6}, dt: {:.6}",
-            self.pitch, self.yaw, dt
-        );
 
         let (forward, right, up) = self.get_vecs();
         self.position +=
             forward * (controller.move_forward - controller.move_backward) * controller.speed * dt;
-        // FIXME -right
         self.position +=
-            -right * (controller.move_right - controller.move_left) * controller.speed * dt;
+            right * (controller.move_right - controller.move_left) * controller.speed * dt;
         self.position += up * (controller.move_up - controller.move_down) * controller.speed * dt;
     }
 }
@@ -106,19 +95,25 @@ impl Camera {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniform {
-    pub view_proj: [[f32; 4]; 4],
+    pub view: [[f32; 4]; 4],
+    pub proj: [[f32; 4]; 4],
+    pub position: [f32; 4],
 }
 
 impl CameraUniform {
     pub fn new() -> Self {
         use cgmath::SquareMatrix;
         Self {
-            view_proj: cgmath::Matrix4::identity().into(),
+            view: cgmath::Matrix4::identity().into(),
+            proj: cgmath::Matrix4::identity().into(),
+            position: [0.0; 4],
         }
     }
 
-    pub fn update_view_proj(&mut self, camera: &Camera) {
-        self.view_proj = camera.build_view_projection_matrix().into();
+    pub fn update(&mut self, camera: &Camera) {
+        self.view = camera.get_view_matrix().into();
+        self.proj = camera.projection.get_matrix().into();
+        self.position = camera.position.to_homogeneous().into();
     }
 }
 
