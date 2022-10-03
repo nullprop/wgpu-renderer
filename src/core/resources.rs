@@ -24,11 +24,12 @@ pub async fn load_binary(file_name: &str) -> anyhow::Result<Vec<u8>> {
 
 pub async fn load_texture(
     file_name: &str,
+    is_normal_map: bool,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
 ) -> anyhow::Result<Texture> {
     let data = load_binary(file_name).await?;
-    Texture::from_bytes(device, queue, &data, file_name)
+    return Texture::from_bytes(device, queue, &data, file_name, is_normal_map);
 }
 
 pub async fn load_model(
@@ -57,33 +58,22 @@ pub async fn load_model(
 
     let mut materials = Vec::new();
     for m in obj_materials? {
-        let diffuse_texture = load_texture(&m.diffuse_texture, device, queue).await?;
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
-                },
-            ],
-            label: None,
-        });
+        let diffuse_texture = load_texture(&m.diffuse_texture, true, device, queue).await?;
+        let normal_texture = load_texture(&m.normal_texture, false, device, queue).await?;
 
-        materials.push(Material {
-            name: m.name,
+        materials.push(Material::new(
+            device,
+            &m.name,
             diffuse_texture,
-            bind_group,
-        })
+            normal_texture,
+            layout,
+        ));
     }
 
     let meshes = models
         .into_iter()
         .map(|m| {
-            let vertices = (0..m.mesh.positions.len() / 3)
+            let mut vertices = (0..m.mesh.positions.len() / 3)
                 .map(|i| ModelVertex {
                     position: [
                         m.mesh.positions[i * 3],
@@ -96,8 +86,55 @@ pub async fn load_model(
                         m.mesh.normals[i * 3 + 1],
                         m.mesh.normals[i * 3 + 2],
                     ],
+                    tangent: [0.0; 3],
+                    bitangent: [0.0; 3],
                 })
                 .collect::<Vec<_>>();
+
+            let indices = &m.mesh.indices;
+            let mut triangles_included = vec![0; vertices.len()];
+
+            // tangents and bitangents from triangles
+            for chunk in indices.chunks(3) {
+                let v0 = vertices[chunk[0] as usize];
+                let v1 = vertices[chunk[1] as usize];
+                let v2 = vertices[chunk[2] as usize];
+
+                let pos0: cgmath::Vector3<f32> = v0.position.into();
+                let pos1: cgmath::Vector3<f32> = v1.position.into();
+                let pos2: cgmath::Vector3<f32> = v2.position.into();
+
+                let uv0: cgmath::Vector2<f32> = v0.tex_coords.into();
+                let uv1: cgmath::Vector2<f32> = v1.tex_coords.into();
+                let uv2: cgmath::Vector2<f32> = v2.tex_coords.into();
+
+                let delta_pos1 = pos1 - pos0;
+                let delta_pos2 = pos2 - pos0;
+
+                let delta_uv1 = uv1 - uv0;
+                let delta_uv2 = uv2 - uv0;
+
+                let r = 1.0 / (delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x);
+                let tangent = (delta_pos1 * delta_uv2.y - delta_pos2 * delta_uv1.y) * r;
+                let bitangent = (delta_pos2 * delta_uv1.x - delta_pos1 * delta_uv2.x) * -r;
+
+                for i in 0..3 {
+                    let sz = chunk[i] as usize;
+                    vertices[sz].tangent =
+                        (tangent + cgmath::Vector3::from(vertices[sz].tangent)).into();
+                    vertices[sz].bitangent =
+                        (bitangent + cgmath::Vector3::from(vertices[sz].bitangent)).into();
+                    triangles_included[sz] += 1;
+                }
+            }
+
+            // Average the tangents/bitangents
+            for (i, n) in triangles_included.into_iter().enumerate() {
+                let denom = 1.0 / n as f32;
+                let mut v = &mut vertices[i];
+                v.tangent = (cgmath::Vector3::from(v.tangent) * denom).into();
+                v.bitangent = (cgmath::Vector3::from(v.bitangent) * denom).into();
+            }
 
             let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some(&format!("{:?} Vertex Buffer", file_name)),
@@ -110,13 +147,13 @@ pub async fn load_model(
                 usage: wgpu::BufferUsages::INDEX,
             });
 
-            Mesh {
+            return Mesh {
                 name: file_name.to_string(),
                 vertex_buffer,
                 index_buffer,
                 num_elements: m.mesh.indices.len() as u32,
                 material: m.mesh.material_id.unwrap_or(0),
-            }
+            };
         })
         .collect::<Vec<_>>();
 

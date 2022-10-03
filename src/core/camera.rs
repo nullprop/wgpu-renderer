@@ -49,7 +49,7 @@ impl Camera {
     }
 
     pub fn get_view_matrix(&self) -> cgmath::Matrix4<f32> {
-        let (forward, _right, up) = self.get_vecs();
+        let (_right, up, forward) = self.get_vecs();
         return cgmath::Matrix4::look_to_rh(self.position, forward, up);
     }
 
@@ -67,7 +67,7 @@ impl Camera {
             cgmath::Vector3::new(pitch_cos * yaw_cos, pitch_sin, pitch_cos * yaw_sin).normalize();
         let right = cgmath::Vector3::new(-yaw_sin, 0.0, yaw_cos).normalize();
         let up = right.cross(forward);
-        return (forward, right, up);
+        return (right, up, forward);
     }
 
     pub fn update(&mut self, dt: Duration, controller: &CameraController) {
@@ -83,7 +83,7 @@ impl Camera {
             self.yaw = 360.0 + self.yaw;
         }
 
-        let (forward, right, up) = self.get_vecs();
+        let (right, up, forward) = self.get_vecs();
         self.position +=
             forward * (controller.move_forward - controller.move_backward) * controller.speed * dt;
         self.position +=
