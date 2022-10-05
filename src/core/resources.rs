@@ -28,6 +28,7 @@ pub async fn load_texture(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
 ) -> anyhow::Result<Texture> {
+    println!("load_texture {}", file_name);
     let data = load_binary(file_name).await?;
     return Texture::from_bytes(device, queue, &data, file_name, is_normal_map);
 }
@@ -58,8 +59,23 @@ pub async fn load_model(
 
     let mut materials = Vec::new();
     for m in obj_materials? {
-        let diffuse_texture = load_texture(&m.diffuse_texture, false, device, queue).await?;
-        let normal_texture = load_texture(&m.normal_texture, true, device, queue).await?;
+        let diffuse_texture_result = load_texture(&m.diffuse_texture, false, device, queue).await;
+        let normal_texture_result = load_texture(&m.normal_texture, true, device, queue).await;
+
+        let diffuse_texture: Texture;
+        let normal_texture: Texture;
+
+        if diffuse_texture_result.is_err() {
+            diffuse_texture = load_texture("gray.png", false, device, queue).await?;
+        } else {
+            diffuse_texture = diffuse_texture_result?;
+        }
+
+        if normal_texture_result.is_err() {
+            normal_texture = load_texture("gray.png", true, device, queue).await?;
+        } else {
+            normal_texture = normal_texture_result?;
+        }
 
         materials.push(Material::new(
             device,

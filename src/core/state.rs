@@ -11,7 +11,7 @@ use super::model::{DrawModel, Model, ModelVertex, Vertex};
 use super::resources;
 use super::texture::Texture;
 
-const NUM_INSTANCES_PER_ROW: u32 = 10;
+const NUM_INSTANCES_PER_ROW: u32 = 1;
 
 pub struct State {
     pub size: winit::dpi::PhysicalSize<u32>,
@@ -116,7 +116,7 @@ impl State {
 
         let camera_controller = CameraController::new(1.0, 2.0);
 
-        let light_uniform = LightUniform::new([2.0, 4.0, 2.0], [1.0, 1.0, 1.0]);
+        let light_uniform = LightUniform::new([900.0, 60.0, 200.0], [1.0, 1.0, 1.0]);
 
         // We'll want to update our lights position, so we use COPY_DST
         let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -193,32 +193,44 @@ impl State {
             });
 
         let obj_model =
-            resources::load_model("cube.obj", &device, &queue, &texture_bind_group_layout)
+            resources::load_model("sponza.obj", &device, &queue, &texture_bind_group_layout)
                 .await
                 .unwrap();
 
-        const SPACE_BETWEEN: f32 = 3.0;
-        let instances = (0..NUM_INSTANCES_PER_ROW)
-            .flat_map(|z| {
-                (0..NUM_INSTANCES_PER_ROW).map(move |x| {
-                    let x = SPACE_BETWEEN * (x as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
-                    let z = SPACE_BETWEEN * (z as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
+        let instances: Vec<Instance>;
+        if NUM_INSTANCES_PER_ROW > 1 {
+            const SPACE_BETWEEN: f32 = 3.0;
+            instances = (0..NUM_INSTANCES_PER_ROW)
+                .flat_map(|z| {
+                    (0..NUM_INSTANCES_PER_ROW).map(move |x| {
+                        let x = SPACE_BETWEEN * (x as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
+                        let z = SPACE_BETWEEN * (z as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
 
-                    let position = cgmath::Vector3 { x, y: 0.0, z };
+                        let position = cgmath::Vector3 { x, y: 0.0, z };
 
-                    let rotation = if position.is_zero() {
-                        cgmath::Quaternion::from_axis_angle(
-                            cgmath::Vector3::unit_z(),
-                            cgmath::Deg(0.0),
-                        )
-                    } else {
-                        cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(45.0))
-                    };
+                        let rotation = if position.is_zero() {
+                            cgmath::Quaternion::from_axis_angle(
+                                cgmath::Vector3::unit_z(),
+                                cgmath::Deg(0.0),
+                            )
+                        } else {
+                            cgmath::Quaternion::from_axis_angle(
+                                position.normalize(),
+                                cgmath::Deg(45.0),
+                            )
+                        };
 
-                    Instance { position, rotation }
+                        Instance { position, rotation }
+                    })
                 })
-            })
-            .collect::<Vec<_>>();
+                .collect::<Vec<_>>();
+        } else {
+            instances = [Instance {
+                position: [0.0, 0.0, 0.0].into(),
+                rotation: cgmath::Quaternion::one(),
+            }]
+            .into();
+        }
 
         let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
         let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
