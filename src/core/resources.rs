@@ -58,8 +58,8 @@ pub async fn load_model(
 
     let mut materials = Vec::new();
     for m in obj_materials? {
-        let diffuse_texture = load_texture(&m.diffuse_texture, true, device, queue).await?;
-        let normal_texture = load_texture(&m.normal_texture, false, device, queue).await?;
+        let diffuse_texture = load_texture(&m.diffuse_texture, false, device, queue).await?;
+        let normal_texture = load_texture(&m.normal_texture, true, device, queue).await?;
 
         materials.push(Material::new(
             device,
