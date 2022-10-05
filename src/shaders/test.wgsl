@@ -94,7 +94,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let half_dir = normalize(view_dir + light_dir);
 
     // ambient
-    let ambient_strength = 0.05;
+    let ambient_strength = 0.025;
     let ambient_color = light.color * ambient_strength;
 
     // diffuse
