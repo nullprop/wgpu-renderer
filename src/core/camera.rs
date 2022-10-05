@@ -42,8 +42,8 @@ impl Camera {
             projection: Projection {
                 aspect: aspect,
                 fovy: fovy,
-                znear: 0.01,
-                zfar: 1000.0,
+                znear: 0.1,
+                zfar: 3000.0,
             },
         }
     }
@@ -89,6 +89,10 @@ impl Camera {
         self.position +=
             right * (controller.move_right - controller.move_left) * controller.speed * dt;
         self.position += up * (controller.move_up - controller.move_down) * controller.speed * dt;
+        println!(
+            "camera pos ({}, {}, {})",
+            self.position.x, self.position.y, self.position.z
+        );
     }
 }
 
