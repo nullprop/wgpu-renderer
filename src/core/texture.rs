@@ -72,7 +72,30 @@ impl Texture {
     ) -> Result<Self> {
         let rgba = img.to_rgba8();
         let dimensions = img.dimensions();
+        return Self::from_pixels(
+            device,
+            queue,
+            &rgba.to_vec(),
+            dimensions,
+            4,
+            if is_normal_map {
+                wgpu::TextureFormat::Rgba8UnormSrgb
+            } else {
+                wgpu::TextureFormat::Rgba8Unorm
+            },
+            label,
+        );
+    }
 
+    pub fn from_pixels(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        pixels: &[u8],
+        dimensions: (u32, u32),
+        stride: u32,
+        format: wgpu::TextureFormat,
+        label: Option<&str>,
+    ) -> Result<Self> {
         let size = wgpu::Extent3d {
             width: dimensions.0,
             height: dimensions.1,
@@ -84,14 +107,12 @@ impl Texture {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: if is_normal_map {
-                wgpu::TextureFormat::Rgba8Unorm
-            } else {
-                wgpu::TextureFormat::Rgba8UnormSrgb
-            },
+            format: format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         });
 
+        dbg!(stride);
+        dbg!(dimensions);
         queue.write_texture(
             wgpu::ImageCopyTexture {
                 aspect: wgpu::TextureAspect::All,
@@ -99,10 +120,10 @@ impl Texture {
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
             },
-            &rgba,
+            &pixels,
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: std::num::NonZeroU32::new(4 * dimensions.0),
+                bytes_per_row: std::num::NonZeroU32::new(stride * dimensions.0),
                 rows_per_image: std::num::NonZeroU32::new(dimensions.1),
             },
             size,

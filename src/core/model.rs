@@ -44,9 +44,9 @@ impl Material {
 
         return Self {
             name: String::from(name),
-            diffuse_texture: diffuse_texture,
-            normal_texture: normal_texture,
-            bind_group: bind_group,
+            diffuse_texture,
+            normal_texture,
+            bind_group,
         };
     }
 }
@@ -69,12 +69,12 @@ pub trait Vertex {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ModelVertex {
     pub position: [f32; 3],
     pub tex_coords: [f32; 2],
     pub normal: [f32; 3],
-    pub tangent: [f32; 3],
+    pub tangent: [f32; 4],
     pub bitangent: [f32; 3],
 }
 

@@ -7,17 +7,15 @@ use super::model::{Mesh, Model};
 pub struct LightUniform {
     pub position: [f32; 3],
     _padding: u32,
-    pub color: [f32; 3],
-    _padding2: u32,
+    pub color: [f32; 4],
 }
 
 impl LightUniform {
-    pub fn new(position: [f32; 3], color: [f32; 3]) -> Self {
+    pub fn new(position: [f32; 3], color: [f32; 4]) -> Self {
         return LightUniform {
             position: position,
             _padding: 0,
             color: color,
-            _padding2: 0,
         };
     }
 }
