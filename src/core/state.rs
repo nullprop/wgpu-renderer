@@ -29,7 +29,7 @@ pub struct State {
     instances: Vec<Instance>,
     instance_buffer: wgpu::Buffer,
     depth_texture: Texture,
-    obj_model: Model,
+    model: Model,
     light_uniform: LightUniform,
     light_buffer: wgpu::Buffer,
     light_render_pipeline: wgpu::RenderPipeline,
@@ -76,7 +76,7 @@ impl State {
 
         // Camera
         let camera = Camera::new(
-            (0.0, 4.0, -4.0).into(),
+            (0.0, 0.0, 0.0).into(),
             0.0,
             0.0,
             60.0,
@@ -116,7 +116,7 @@ impl State {
 
         let camera_controller = CameraController::new(1.0, 2.0);
 
-        let light_uniform = LightUniform::new([900.0, 60.0, 200.0], [1.0, 1.0, 1.0]);
+        let light_uniform = LightUniform::new([100.0, 60.0, 0.0], [1.0, 1.0, 1.0, 10000.0]);
 
         // We'll want to update our lights position, so we use COPY_DST
         let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -193,7 +193,7 @@ impl State {
             });
 
         let obj_model =
-            resources::load_model("sponza.obj", &device, &queue, &texture_bind_group_layout)
+            resources::load_model_gltf("sponza/Sponza.gltf", &device, &queue, &texture_bind_group_layout)
                 .await
                 .unwrap();
 
@@ -300,7 +300,7 @@ impl State {
             instances,
             instance_buffer,
             depth_texture,
-            obj_model,
+            model: obj_model,
             light_uniform,
             light_buffer,
             light_render_pipeline,
@@ -346,7 +346,7 @@ impl State {
         // Update the light
         let old_position: cgmath::Vector3<_> = self.light_uniform.position.into();
         self.light_uniform.position =
-            (cgmath::Quaternion::from_angle_y(cgmath::Deg(1.0)) * old_position).into();
+            (cgmath::Quaternion::from_angle_y(cgmath::Deg(90.0 * dt.as_secs_f32())) * old_position).into();
         self.queue.write_buffer(
             &self.light_buffer,
             0,
@@ -397,14 +397,14 @@ impl State {
 
             render_pass.set_pipeline(&self.light_render_pipeline);
             render_pass.draw_light_model(
-                &self.obj_model,
+                &self.model,
                 &self.camera_bind_group,
                 &self.light_bind_group,
             );
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.draw_model_instanced(
-                &self.obj_model,
+                &self.model,
                 0..self.instances.len() as u32,
                 &self.camera_bind_group,
                 &self.light_bind_group,

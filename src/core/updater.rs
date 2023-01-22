@@ -10,9 +10,6 @@ use winit::{
 pub async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
-    window.set_cursor_grab(true).unwrap();
-    window.set_cursor_visible(false);
-    window.set_decorations(false);
     let mut state = State::new(&window).await;
     let mut last_render = Instant::now();
 
@@ -43,6 +40,11 @@ pub async fn run() {
                         }
                         WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                             state.resize(**new_inner_size);
+                        }
+                        WindowEvent::Focused(focused) => {
+                            // window.set_cursor_grab(*focused).unwrap();
+                            window.set_cursor_visible(!*focused);
+                            window.set_decorations(!*focused);
                         }
                         _ => {}
                     }
