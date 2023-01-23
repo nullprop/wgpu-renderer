@@ -70,6 +70,7 @@ impl State {
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
+            alpha_mode: wgpu::CompositeAlphaMode::Opaque,
         };
 
         surface.configure(&device, &config);
@@ -192,10 +193,14 @@ impl State {
                 label: Some("texture_bind_group_layout"),
             });
 
-        let obj_model =
-            resources::load_model_gltf("sponza/Sponza.gltf", &device, &queue, &texture_bind_group_layout)
-                .await
-                .unwrap();
+        let obj_model = resources::load_model_gltf(
+            "sponza/Sponza.gltf",
+            &device,
+            &queue,
+            &texture_bind_group_layout,
+        )
+        .await
+        .unwrap();
 
         let instances: Vec<Instance>;
         if NUM_INSTANCES_PER_ROW > 1 {
@@ -346,7 +351,8 @@ impl State {
         // Update the light
         let old_position: cgmath::Vector3<_> = self.light_uniform.position.into();
         self.light_uniform.position =
-            (cgmath::Quaternion::from_angle_y(cgmath::Deg(90.0 * dt.as_secs_f32())) * old_position).into();
+            (cgmath::Quaternion::from_angle_y(cgmath::Deg(90.0 * dt.as_secs_f32())) * old_position)
+                .into();
         self.queue.write_buffer(
             &self.light_buffer,
             0,
