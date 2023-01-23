@@ -349,7 +349,7 @@ pub async fn load_model_gltf(
             &diffuse_data.pixels,
             (diffuse_data.width, diffuse_data.height),
             gltf_image_format_stride(diffuse_data.format),
-            gltf_image_format_to_wgpu(diffuse_data.format, false),
+            gltf_image_format_to_wgpu(diffuse_data.format, true),
             Some(file_name),
         )
         .unwrap();
@@ -378,7 +378,7 @@ pub async fn load_model_gltf(
             &normal_data.pixels,
             (normal_data.width, normal_data.height),
             gltf_image_format_stride(normal_data.format),
-            gltf_image_format_to_wgpu(normal_data.format, true),
+            gltf_image_format_to_wgpu(normal_data.format, false),
             Some(file_name),
         )
         .unwrap();
