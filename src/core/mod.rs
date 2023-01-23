@@ -5,4 +5,4 @@ pub mod model;
 pub mod resources;
 pub mod state;
 pub mod texture;
-pub mod updater;
+pub mod window;
