@@ -1,3 +1,5 @@
+let PI = 3.14159;
+
 // Vertex shader
 
 struct CameraUniform {
@@ -84,6 +86,40 @@ fn vs_main(
 
 // Fragment shader
 
+// normal distribution function (Trowbridge-Reitz GGX)
+
+fn distribution_ggx(n: vec3<f32>, h: vec3<f32>, a: f32) -> f32 {
+    let a2 = a * a;
+    let n_dot_h = max(dot(n, h), 0.0);
+    let n_dot_h2 = n_dot_h * n_dot_h;
+
+    var denom = (n_dot_h2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return a2 / denom;
+}
+
+// geometry function (Smith's Schlick-GGX)
+
+fn geometry_schlick_ggx(nom: f32, k: f32) -> f32 {
+    let denom = nom * (1.0 - k) + k;
+    return nom / denom;
+}
+
+fn geometry_smith(n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, k: f32) -> f32 {
+    let n_dot_v = max(dot(n, v), 0.0);
+    let n_dot_l = max(dot(n, l), 0.0);
+    let ggx1 = geometry_schlick_ggx(n_dot_v, k);
+    let ggx2 = geometry_schlick_ggx(n_dot_l, k);
+    return ggx1 * ggx2;
+}
+
+// fresnel function (Fresnel-Schlick approximation)
+
+fn fresnel_schlick(cos_theta: f32, f: vec3<f32>) -> vec3<f32> {
+    return f + (1.0 - f) * pow(1.0 - cos_theta, 5.0);
+}
+
 @group(0) @binding(0)
 var t_diffuse: texture_2d<f32>;
 @group(0)@binding(1)
@@ -94,11 +130,23 @@ var t_normal: texture_2d<f32>;
 @group(0) @binding(3)
 var s_normal: sampler;
 
+@group(0)@binding(4)
+var t_metallic_roughness: texture_2d<f32>;
+@group(0) @binding(5)
+var s_metallic_roughness: sampler;
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // textures
     let object_color: vec4<f32> = textureSample(t_diffuse, s_diffuse, in.tex_coords);
     let object_normal: vec4<f32> = textureSample(t_normal, s_normal, in.tex_coords);
+    let object_metallic_roughness: vec4<f32> = textureSample(
+        t_metallic_roughness, s_metallic_roughness, in.tex_coords);
+    // TODO: AO
+
+    let albedo = object_color.xyz;
+    let metallic = object_metallic_roughness.z;
+    let roughness = object_metallic_roughness.y;
     
     // lighting vecs
     let tangent_normal = object_normal.xyz * 2.0 - 1.0;
@@ -109,23 +157,43 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // attenuation
     let light_dist = length(light.position - in.world_position);
     let coef_a = 0.0;
-    let coef_b = 1.25;
+    let coef_b = 1.0;
     let light_attenuation = 1.0 / (1.0 + coef_a * light_dist + coef_b * light_dist * light_dist);
 
-    // diffuse
-    let diffuse_strength = max(dot(tangent_normal, light_dir), 0.0);
-    let diffuse_color = diffuse_strength * light.color.xyz * light.color.w * light_attenuation;
+    // radiance
+    let radiance_strength = max(dot(tangent_normal, light_dir), 0.0);
+    let radiance = radiance_strength * light.color.xyz * light.color.w * light_attenuation;
 
-    // specular
-    let specular_strength = pow(max(dot(tangent_normal, half_dir), 0.0), 32.0);
-    let specular_color = specular_strength * light.color.xyz * light.color.w * light_attenuation;
+    // fresnel
+    var f = vec3(0.04);
+    f = mix(f, albedo, metallic);
+    let fresnel = fresnel_schlick(max(dot(half_dir, view_dir), 0.0), f);
+
+    // distribution
+    let ndf = distribution_ggx(tangent_normal, half_dir, roughness);
+
+    // geometry
+    let geo = geometry_smith(tangent_normal, view_dir, light_dir, roughness);
+
+    // brdf
+    let nom = ndf * geo * fresnel;
+    let denom = 4.0 * max(dot(tangent_normal, view_dir), 0.0) * max(dot(tangent_normal, light_dir), 0.0) + 0.0001;
+    let specular = nom / denom;
+
+    let k_d = (vec3(1.0) - fresnel) * (1.0 - metallic);
+    let n_dot_l = max(dot(tangent_normal, light_dir), 0.0);
+    let total_radiance = (k_d * albedo / PI + specular) * radiance * n_dot_l;
 
     // ambient
     let ambient_light_color = vec3(1.0);
     let ambient_strength = 0.025;
     let ambient_color = ambient_light_color * ambient_strength;
 
-    let result = (ambient_color + diffuse_color + specular_color) * object_color.xyz;
+    var result = ambient_color + total_radiance;
+
+    // tonemap
+    result = result / (result + vec3(1.0));
+    //result = pow(result, vec3(1.0/2.2));
 
     return vec4<f32>(result, object_color.a);
 }

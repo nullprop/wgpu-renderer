@@ -6,6 +6,9 @@ pub struct Material {
     pub name: String,
     pub diffuse_texture: Texture,
     pub normal_texture: Texture,
+    pub metallic_roughness_texture: Texture,
+    pub metallic_factor: f32, // TODO pass to shader
+    pub roughness_factor: f32, // TODO pass to shader
     pub bind_group: wgpu::BindGroup,
 }
 
@@ -15,6 +18,9 @@ impl Material {
         name: &str,
         diffuse_texture: Texture,
         normal_texture: Texture,
+        metallic_roughness_texture: Texture,
+        metallic_factor: f32,
+        roughness_factor: f32,
         layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -38,6 +44,15 @@ impl Material {
                     binding: 3,
                     resource: wgpu::BindingResource::Sampler(&normal_texture.sampler),
                 },
+                // metallic roughness
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&metallic_roughness_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&metallic_roughness_texture.sampler),
+                },
             ],
             label: None,
         });
@@ -46,6 +61,9 @@ impl Material {
             name: String::from(name),
             diffuse_texture,
             normal_texture,
+            metallic_roughness_texture,
+            metallic_factor,
+            roughness_factor,
             bind_group,
         };
     }
