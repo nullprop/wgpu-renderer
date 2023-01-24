@@ -192,7 +192,7 @@ pub async fn load_model_gltf(
         let diffuse_index = pbr
             .base_color_texture()
             .map(|tex| {
-                println!("Grabbing diffuse tex");
+                println!("gltf: get diffuse tex");
                 tex.texture().source().index()
             })
             .unwrap_or(0); // TODO default tex
@@ -221,7 +221,7 @@ pub async fn load_model_gltf(
         let normal_index = material
             .normal_texture()
             .map(|tex| {
-                println!("Grabbing normal tex");
+                println!("gltf: get normal tex");
                 tex.texture().source().index()
             })
             .unwrap_or(0); // TODO default tex
@@ -246,11 +246,44 @@ pub async fn load_model_gltf(
         )
         .unwrap();
 
+        // metallic + roughness
+        let mr_index = pbr
+            .metallic_roughness_texture()
+            .map(|tex| {
+                println!("gltf: get metallic roughness tex");
+                tex.texture().source().index()
+            })
+            .unwrap_or(0); // TODO default tex
+
+        let mr_data = &mut images[mr_index];
+        dbg!(mr_data.format);
+
+        if mr_data.format == gltf::image::Format::R8G8B8
+            || mr_data.format == gltf::image::Format::R16G16B16
+        {
+            mr_data.pixels =
+                gltf_pixels_to_wgpu(mr_data.pixels.clone(), mr_data.format);
+        }
+
+        let mr_texture = Texture::from_pixels(
+            device,
+            queue,
+            &mr_data.pixels,
+            (mr_data.width, mr_data.height),
+            gltf_image_format_stride(mr_data.format),
+            gltf_image_format_to_wgpu(mr_data.format, false),
+            Some(file_name),
+        )
+        .unwrap();
+
         materials.push(Material::new(
             device,
             &material.name().unwrap_or("Default Material").to_string(),
             diffuse_texture,
             normal_texture,
+            mr_texture,
+            pbr.metallic_factor(),
+            pbr.roughness_factor(),
             layout,
         ));
     }
