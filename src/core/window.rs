@@ -9,9 +9,18 @@ use winit::{
 
 pub async fn run() {
     let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().build(&event_loop).unwrap();
+    let window = WindowBuilder::new()
+        .with_fullscreen(Some(winit::window::Fullscreen::Borderless(None)))
+        .with_maximized(true)
+        .build(&event_loop)
+        .unwrap();
     let mut state = State::new(&window).await;
     let mut last_render = Instant::now();
+
+    window
+        .set_cursor_grab(winit::window::CursorGrabMode::Confined)
+        .unwrap();
+    window.set_cursor_visible(false);
 
     // Event loop
     event_loop.run(move |event, _, control_flow| {
@@ -42,9 +51,14 @@ pub async fn run() {
                             state.resize(**new_inner_size);
                         }
                         WindowEvent::Focused(focused) => {
-                            // window.set_cursor_grab(*focused).unwrap();
+                            window
+                                .set_cursor_grab(if *focused == true {
+                                    winit::window::CursorGrabMode::Confined
+                                } else {
+                                    winit::window::CursorGrabMode::None
+                                })
+                                .unwrap();
                             window.set_cursor_visible(!*focused);
-                            window.set_decorations(!*focused);
                         }
                         _ => {}
                     }
