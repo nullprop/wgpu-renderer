@@ -145,8 +145,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // TODO: AO
 
     let albedo = object_color.xyz;
-    let metallic = object_metallic_roughness.z;
-    let roughness = object_metallic_roughness.y;
+    // TODO: pass factors to shader
+    let roughness = object_metallic_roughness.y * 1.0;
+    let metallic = object_metallic_roughness.z * 1.0;
     
     // lighting vecs
     let tangent_normal = object_normal.xyz * 2.0 - 1.0;
