@@ -10,6 +10,7 @@ use super::light::{DrawLight, LightUniform};
 use super::model::{DrawModel, Model, ModelVertex, Vertex};
 use super::resources;
 use super::texture::Texture;
+use crate::shaders::preprocessor::preprocess_wgsl;
 
 const NUM_INSTANCES_PER_ROW: u32 = 1;
 
@@ -275,7 +276,7 @@ impl State {
             });
             let shader = wgpu::ShaderModuleDescriptor {
                 label: Some("Normal Shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/test.wgsl").into()),
+                source: preprocess_wgsl("test.wgsl"),
             };
             create_render_pipeline(
                 &device,
@@ -295,7 +296,7 @@ impl State {
             });
             let shader = wgpu::ShaderModuleDescriptor {
                 label: Some("Light Shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/light.wgsl").into()),
+                source: preprocess_wgsl("light.wgsl"),
             };
             create_render_pipeline(
                 &device,

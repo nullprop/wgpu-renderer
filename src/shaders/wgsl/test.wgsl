@@ -1,4 +1,5 @@
-let PI = 3.14159;
+#include constants.wgsl
+#include brdf.wgsl
 
 // Vertex shader
 
@@ -86,40 +87,6 @@ fn vs_main(
 
 // Fragment shader
 
-// normal distribution function (Trowbridge-Reitz GGX)
-
-fn distribution_ggx(n: vec3<f32>, h: vec3<f32>, a: f32) -> f32 {
-    let a2 = a * a;
-    let n_dot_h = max(dot(n, h), 0.0);
-    let n_dot_h2 = n_dot_h * n_dot_h;
-
-    var denom = (n_dot_h2 * (a2 - 1.0) + 1.0);
-    denom = PI * denom * denom;
-
-    return a2 / denom;
-}
-
-// geometry function (Smith's Schlick-GGX)
-
-fn geometry_schlick_ggx(nom: f32, k: f32) -> f32 {
-    let denom = nom * (1.0 - k) + k;
-    return nom / denom;
-}
-
-fn geometry_smith(n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, k: f32) -> f32 {
-    let n_dot_v = max(dot(n, v), 0.0);
-    let n_dot_l = max(dot(n, l), 0.0);
-    let ggx1 = geometry_schlick_ggx(n_dot_v, k);
-    let ggx2 = geometry_schlick_ggx(n_dot_l, k);
-    return ggx1 * ggx2;
-}
-
-// fresnel function (Fresnel-Schlick approximation)
-
-fn fresnel_schlick(cos_theta: f32, f: vec3<f32>) -> vec3<f32> {
-    return f + (1.0 - f) * pow(1.0 - cos_theta, 5.0);
-}
-
 @group(0) @binding(0)
 var t_diffuse: texture_2d<f32>;
 @group(0)@binding(1)
@@ -131,26 +98,26 @@ var t_normal: texture_2d<f32>;
 var s_normal: sampler;
 
 @group(0)@binding(4)
-var t_metallic_roughness: texture_2d<f32>;
+var t_roughness_metalness: texture_2d<f32>;
 @group(0) @binding(5)
-var s_metallic_roughness: sampler;
+var s_roughness_metalness: sampler;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // textures
     let object_color: vec4<f32> = textureSample(t_diffuse, s_diffuse, in.tex_coords);
     let object_normal: vec4<f32> = textureSample(t_normal, s_normal, in.tex_coords);
-    let object_metallic_roughness: vec4<f32> = textureSample(
-        t_metallic_roughness, s_metallic_roughness, in.tex_coords);
+    let object_roughness_metalness: vec4<f32> = textureSample(
+        t_roughness_metalness, s_roughness_metalness, in.tex_coords);
     // TODO: AO
 
     let albedo = object_color.xyz;
     // TODO: pass factors to shader
-    let roughness = object_metallic_roughness.y * 1.0;
-    let metallic = object_metallic_roughness.z * 1.0;
+    let roughness = object_roughness_metalness.y * 1.0;
+    let metalness = object_roughness_metalness.z * 1.0;
     
     // lighting vecs
-    let tangent_normal = object_normal.xyz * 2.0 - 1.0;
+    let normal_dir = object_normal.xyz * 2.0 - 1.0;
     var light_dir = normalize(in.tangent_light_position - in.tangent_position);
     let view_dir = normalize(in.tangent_view_position - in.tangent_position);
     let half_dir = normalize(view_dir + light_dir);
@@ -162,28 +129,19 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let light_attenuation = 1.0 / (1.0 + coef_a * light_dist + coef_b * light_dist * light_dist);
 
     // radiance
-    let radiance_strength = max(dot(tangent_normal, light_dir), 0.0);
+    let radiance_strength = max(dot(normal_dir, light_dir), 0.0);
     let radiance = radiance_strength * light.color.xyz * light.color.w * light_attenuation;
 
-    // fresnel
-    var f = vec3(0.04);
-    f = mix(f, albedo, metallic);
-    let fresnel = fresnel_schlick(max(dot(half_dir, view_dir), 0.0), f);
-
-    // distribution
-    let ndf = distribution_ggx(tangent_normal, half_dir, roughness);
-
-    // geometry
-    let geo = geometry_smith(tangent_normal, view_dir, light_dir, roughness);
-
-    // brdf
-    let nom = ndf * geo * fresnel;
-    let denom = 4.0 * max(dot(tangent_normal, view_dir), 0.0) * max(dot(tangent_normal, light_dir), 0.0) + 0.0001;
-    let specular = nom / denom;
-
-    let k_d = (vec3(1.0) - fresnel) * (1.0 - metallic);
-    let n_dot_l = max(dot(tangent_normal, light_dir), 0.0);
-    let total_radiance = (k_d * albedo / PI + specular) * radiance * n_dot_l;
+    // brdf shading
+    let total_radiance = radiance * brdf(
+        normal_dir,
+        light_dir,
+        view_dir,
+        half_dir,
+        albedo,
+        roughness,
+        metalness
+    );
 
     // ambient
     let ambient_light_color = vec3(1.0);

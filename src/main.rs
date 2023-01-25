@@ -1,4 +1,5 @@
 mod core;
+mod shaders;
 
 fn main() {
     env_logger::init();
