@@ -36,12 +36,12 @@ impl Camera {
         aspect: f32,
     ) -> Self {
         Self {
-            position: position,
-            pitch: pitch,
-            yaw: yaw,
+            position,
+            pitch,
+            yaw,
             projection: Projection {
-                aspect: aspect,
-                fovy: fovy,
+                aspect,
+                fovy,
                 znear: 0.1,
                 zfar: 3000.0,
             },
@@ -78,9 +78,9 @@ impl Camera {
             89.0,
         );
         self.yaw += controller.deltax * controller.sensitivity * 0.022;
-        self.yaw = self.yaw % 360.0;
+        self.yaw %= 360.0;
         if self.yaw < 0.0 {
-            self.yaw = 360.0 + self.yaw;
+            self.yaw += 360.0;
         }
 
         let (right, up, forward) = self.get_vecs();
@@ -237,15 +237,12 @@ impl CameraController {
         }
 
         handled = match device_event {
-            None => false,
-            Some(event) => match event {
-                DeviceEvent::MouseMotion { delta } => {
-                    self.deltax += delta.0 as f32;
-                    self.deltay += delta.1 as f32;
-                    return true;
-                }
-                _ => false,
-            },
+            Some(DeviceEvent::MouseMotion { delta }) => {
+                self.deltax += delta.0 as f32;
+                self.deltay += delta.1 as f32;
+                return true;
+            }
+            _ => false,
         };
 
         return handled;

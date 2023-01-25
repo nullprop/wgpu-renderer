@@ -57,7 +57,9 @@ fn brdf(
     let denom = 4.0 * max(dot(normal_dir, view_dir), 0.0) * max(dot(normal_dir, light_dir), 0.0) + 0.0001;
     let specular = nom / denom;
 
+    // diffuse
     let k_d = (vec3(1.0) - fresnel) * (1.0 - metalness);
     let n_dot_l = max(dot(normal_dir, light_dir), 0.0);
-    return (k_d * albedo / PI + specular) * n_dot_l;
+    
+    return ((k_d * albedo / PI) + specular) * n_dot_l;
 }
