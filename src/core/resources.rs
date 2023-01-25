@@ -1,4 +1,3 @@
-use std::io::{BufReader, Cursor};
 use std::path::PathBuf;
 use wgpu::util::DeviceExt;
 
@@ -9,33 +8,6 @@ pub fn get_resource_path(file_name: &str) -> PathBuf {
     return std::path::Path::new(env!("OUT_DIR"))
         .join("res")
         .join(file_name);
-}
-
-pub async fn load_string(file_name: &str) -> anyhow::Result<String> {
-    let path = get_resource_path(file_name);
-    println!("load_string: Loading from {:?}", path.to_str());
-    let txt = std::fs::read_to_string(path)?;
-
-    return Ok(txt);
-}
-
-pub async fn load_binary(file_name: &str) -> anyhow::Result<Vec<u8>> {
-    let path = get_resource_path(file_name);
-    println!("load_binary: Loading from {:?}", path.to_str());
-    let data = std::fs::read(path)?;
-
-    return Ok(data);
-}
-
-pub async fn load_texture(
-    file_name: &str,
-    is_normal_map: bool,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-) -> anyhow::Result<Texture> {
-    println!("load_texture {}", file_name);
-    let data = load_binary(file_name).await?;
-    return Texture::from_bytes(device, queue, &data, file_name, is_normal_map);
 }
 
 pub async fn load_model_gltf(
@@ -83,7 +55,7 @@ pub async fn load_model_gltf(
             }
 
             if let Some(tangent_attribute) = reader.read_tangents() {
-                println!("gltf: loading tangents from file");
+                // println!("gltf: loading tangents from file");
                 let mut tangent_index = 0;
                 tangent_attribute.for_each(|tangent| {
                     // dbg!(tangent);
@@ -99,7 +71,7 @@ pub async fn load_model_gltf(
                     tangent_index += 1;
                 });
             } else {
-                println!("gltf: no tangents in file, calculating from tris");
+                // println!("gltf: no tangents in file, calculating from tris");
                 // tangents and bitangents from triangles
                 let mut triangles_included = vec![0; vertices.len()];
                 for chunk in indices.chunks(3) {
@@ -192,7 +164,7 @@ pub async fn load_model_gltf(
         let diffuse_index = pbr
             .base_color_texture()
             .map(|tex| {
-                println!("gltf: get diffuse tex");
+                // println!("gltf: get diffuse tex");
                 tex.texture().source().index()
             })
             .unwrap_or(0); // TODO default tex
@@ -221,7 +193,7 @@ pub async fn load_model_gltf(
         let normal_index = material
             .normal_texture()
             .map(|tex| {
-                println!("gltf: get normal tex");
+                // println!("gltf: get normal tex");
                 tex.texture().source().index()
             })
             .unwrap_or(0); // TODO default tex
@@ -246,42 +218,42 @@ pub async fn load_model_gltf(
         )
         .unwrap();
 
-        // metallic + roughness
-        let mr_index = pbr
+        // roughness-metalness
+        let rm_index = pbr
             .metallic_roughness_texture()
             .map(|tex| {
-                println!("gltf: get metallic roughness tex");
+                // println!("gltf: get roughness metalness tex");
                 tex.texture().source().index()
             })
             .unwrap_or(0); // TODO default tex
 
-        let mr_data = &mut images[mr_index];
-        dbg!(mr_data.format);
+        let rm_data = &mut images[rm_index];
+        // dbg!(rm_data.format);
 
-        if mr_data.format == gltf::image::Format::R8G8B8
-            || mr_data.format == gltf::image::Format::R16G16B16
+        if rm_data.format == gltf::image::Format::R8G8B8
+            || rm_data.format == gltf::image::Format::R16G16B16
         {
-            mr_data.pixels =
-                gltf_pixels_to_wgpu(mr_data.pixels.clone(), mr_data.format);
+            rm_data.pixels =
+                gltf_pixels_to_wgpu(rm_data.pixels.clone(), rm_data.format);
         }
 
-        let mr_texture = Texture::from_pixels(
+        let rm_texture = Texture::from_pixels(
             device,
             queue,
-            &mr_data.pixels,
-            (mr_data.width, mr_data.height),
-            gltf_image_format_stride(mr_data.format),
-            gltf_image_format_to_wgpu(mr_data.format, false),
+            &rm_data.pixels,
+            (rm_data.width, rm_data.height),
+            gltf_image_format_stride(rm_data.format),
+            gltf_image_format_to_wgpu(rm_data.format, false),
             Some(file_name),
         )
         .unwrap();
 
         materials.push(Material::new(
             device,
-            &material.name().unwrap_or("Default Material").to_string(),
+            &material.name().unwrap_or("Default Material"),
             diffuse_texture,
             normal_texture,
-            mr_texture,
+            rm_texture,
             pbr.metallic_factor(),
             pbr.roughness_factor(),
             layout,

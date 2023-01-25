@@ -75,7 +75,7 @@ impl Texture {
         return Self::from_pixels(
             device,
             queue,
-            &rgba.to_vec(),
+            &rgba,
             dimensions,
             4,
             if is_normal_map {
@@ -107,12 +107,12 @@ impl Texture {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: format,
+            format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         });
 
-        dbg!(stride);
-        dbg!(dimensions);
+        // dbg!(stride);
+        // dbg!(dimensions);
         queue.write_texture(
             wgpu::ImageCopyTexture {
                 aspect: wgpu::TextureAspect::All,
@@ -120,7 +120,7 @@ impl Texture {
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
             },
-            &pixels,
+            pixels,
             wgpu::ImageDataLayout {
                 offset: 0,
                 bytes_per_row: std::num::NonZeroU32::new(stride * dimensions.0),

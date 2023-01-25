@@ -52,7 +52,7 @@ pub async fn run() {
                         }
                         WindowEvent::Focused(focused) => {
                             window
-                                .set_cursor_grab(if *focused == true {
+                                .set_cursor_grab(if *focused {
                                     winit::window::CursorGrabMode::Confined
                                 } else {
                                     winit::window::CursorGrabMode::None
