@@ -244,7 +244,7 @@ impl State {
             });
             let shader = wgpu::ShaderModuleDescriptor {
                 label: Some("Normal Shader"),
-                source: preprocess_wgsl("test.wgsl"),
+                source: preprocess_wgsl("pbr.wgsl"),
             };
             create_render_pipeline(
                 &device,
