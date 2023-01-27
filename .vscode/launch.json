@@ -8,11 +8,11 @@
 			"cargo": {
 				"args": [
 					"build",
-					"--bin=renderer",
-					"--package=renderer"
+					"--bin=wgpu-renderer",
+					"--package=wgpu-renderer"
 				],
 				"filter": {
-					"name": "renderer",
+					"name": "wgpu-renderer",
 					"kind": "bin"
 				}
 			},
