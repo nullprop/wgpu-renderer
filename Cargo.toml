@@ -19,6 +19,7 @@ tobj = { version = "3.2.1", features = ["async"] }
 gltf = "1.0.0"
 wgpu-types = "0.14.1"
 regex = "1.7.1"
+rust-embed = "6.4.2"
 
 [build-dependencies]
 anyhow = "1.0.68"

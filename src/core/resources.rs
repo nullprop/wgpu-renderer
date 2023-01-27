@@ -1,13 +1,20 @@
-use std::path::PathBuf;
 use wgpu::util::DeviceExt;
+use rust_embed::RustEmbed;
 
 use crate::core::model::{Material, Mesh, Model, ModelVertex};
 use crate::core::texture::Texture;
 
-pub fn get_resource_path(file_name: &str) -> PathBuf {
-    return std::path::Path::new(env!("OUT_DIR"))
-        .join("res")
-        .join(file_name);
+#[derive(RustEmbed)]
+#[folder = "res"]
+struct Asset;
+
+pub fn load_binary(file_name: &str) -> Vec<u8> {
+    Asset::get(file_name).unwrap().data.into_owned()
+}
+
+pub fn load_string(file_name: &str) -> String {
+    let binary = Asset::get(file_name).unwrap();
+    std::str::from_utf8(binary.data.as_ref()).unwrap().to_owned()
 }
 
 pub async fn load_model_gltf(
@@ -20,7 +27,8 @@ pub async fn load_model_gltf(
     let mut meshes = Vec::new();
 
     println!("gltf: Loading file {}", file_name);
-    let (document, buffers, mut images) = gltf::import(get_resource_path(file_name))?;
+    let binary = Asset::get(file_name).unwrap();
+    let (document, buffers, mut images) = gltf::import_slice(binary.data.as_ref())?;
 
     println!("gltf: Loading meshes");
     for mesh in document.meshes() {

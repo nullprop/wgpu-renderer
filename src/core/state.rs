@@ -210,7 +210,7 @@ impl State {
             });
 
         let obj_model = resources::load_model_gltf(
-            "Sponza.glb",
+            "models/Sponza.glb",
             &device,
             &queue,
             &texture_bind_group_layout,
