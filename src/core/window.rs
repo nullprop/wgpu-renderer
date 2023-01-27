@@ -17,9 +17,33 @@ pub async fn run() {
     let mut state = State::new(&window).await;
     let mut last_render = Instant::now();
 
-    window
+    #[cfg(target_arch = "wasm32")]
+    {
+        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+        console_log::init().expect("could not initialize logger");
+        
+        // Winit prevents sizing with CSS, so we have to set
+        // the size manually when on web.
+        use winit::dpi::PhysicalSize;
+        window.set_inner_size(PhysicalSize::new(1920, 1080));
+
+        use winit::platform::web::WindowExtWebSys;
+        web_sys::window()
+            .and_then(|win| win.document())
+            .and_then(|doc| doc.body())
+            .and_then(|body| {
+                let canvas = web_sys::Element::from(window.canvas());
+                body.append_child(&canvas).ok()
+            })
+            .expect("Couldn't append canvas to document body.");
+    }
+    #[cfg(not(target_arch = "wasm"))]
+    {
+        window
         .set_cursor_grab(winit::window::CursorGrabMode::Confined)
         .unwrap();
+    }
+
     window.set_cursor_visible(false);
 
     // Event loop

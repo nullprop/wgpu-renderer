@@ -1,9 +1,5 @@
-#![allow(clippy::needless_return)]
-
-mod core;
-mod shaders;
+use wgpu_renderer::run;
 
 fn main() {
-    env_logger::init();
-    pollster::block_on(core::window::run());
+    run();
 }
