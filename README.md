@@ -23,6 +23,7 @@ Controls:
 - 1 realtime pointlight
 - Simple wgsl preprocessor for includes
 - Runs on WASM and native desktop
+  - Tested on `Firefox 109.0`, `Manjaro Linux 22.0.1 (6.1.7-1-MANJARO)`
 
 TODO:
 - Shadow mapping
