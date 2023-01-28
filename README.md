@@ -22,7 +22,7 @@ Controls:
 - glTF models
 - 1 realtime pointlight
 - Simple wgsl preprocessor for includes
-- Works on WASM
+- Runs on WASM and native desktop
 
 TODO:
 - Shadow mapping
