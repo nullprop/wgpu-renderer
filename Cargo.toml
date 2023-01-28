@@ -10,6 +10,9 @@ crate-type = ["cdylib", "rlib"]
 name = "wgpu-renderer"
 path = "src/main.rs"
 
+[profile.dev]
+opt-level = 1 # loading gltf is super slow without this
+
 [dependencies]
 winit = "0.27.5"
 env_logger = "0.10.0"
@@ -24,7 +27,7 @@ tobj = { version = "3.2.1", features = ["async"] }
 gltf = "1.0.0"
 wgpu-types = "0.14.1"
 regex = "1.7.1"
-rust-embed = { version = "6.4.2", features = ["debug-embed", "compression"]}
+rust-embed = { version = "6.4.2", features = ["debug-embed"]}
 cfg-if = "1"
 instant = "0.1.12"
 
