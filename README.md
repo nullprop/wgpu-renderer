@@ -5,6 +5,13 @@ A small [wgpu](https://github.com/gfx-rs/wgpu) renderer written in [Rust](https:
 ## Try it out
 [rasanen.dev/wgpu-renderer](https://rasanen.dev/wgpu-renderer)
 
+Controls:
+- WASD - Move horizontally
+- Ctrl/Space - Move vertically
+- Mouse - Look around
+- Scrollwheel - Increase/Decrease movement speed
+- ESC - Quit (Only on standalone version)
+
 ## Features
 
 - Physically based shading
@@ -27,6 +34,19 @@ TODO:
 - Texture filtering
 - Immediate mode UI (dear imgui, egui)
 - Some type of GI (DDGI, VXGI)
+
+## Running locally
+
+Standalone:
+```sh
+cargo run --release
+```
+
+WASM requires [miniserve](https://github.com/svenstaro/miniserve), or some other http server, such as `python3 -m http.server`.  
+For miniserve, see:
+```sh
+./run-wasm.sh
+```
 
 ## References
 - [wgpu examples](https://github.com/gfx-rs/wgpu/blob/master/wgpu/examples)
