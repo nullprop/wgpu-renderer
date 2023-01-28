@@ -2,6 +2,9 @@
 
 A small [wgpu](https://github.com/gfx-rs/wgpu) renderer written in [Rust](https://github.com/rust-lang/rust).
 
+## Try it out
+[rasanen.dev/wgpu-renderer](https://rasanen.dev/wgpu-renderer)
+
 ## Features
 
 - Physically based shading
@@ -13,7 +16,7 @@ A small [wgpu](https://github.com/gfx-rs/wgpu) renderer written in [Rust](https:
 - Simple wgsl preprocessor for includes
 - Works on WASM
 
-Things I would like to add:
+TODO:
 - Shadow mapping
 - Restructuring
     - Simplify/abstract renderpasses; will be nice to have for PP and GI
@@ -23,15 +26,13 @@ Things I would like to add:
 - AA
 - Texture filtering
 - Immediate mode UI (dear imgui, egui)
-- Editing material properties, lights at runtime through UI
 - Some type of GI (DDGI, VXGI)
 
 ## References
-- [Learn Wgpu](https://sotrh.github.io/learn-wgpu/)
 - [wgpu examples](https://github.com/gfx-rs/wgpu/blob/master/wgpu/examples)
-- [Learn OpenGL](https://learnopengl.com/)
-  - PBR
+- [Learn Wgpu](https://sotrh.github.io/learn-wgpu/)
+- [Learn OpenGL: PBR](https://learnopengl.com/PBR/Theory)
 
 ## Assets
 - Sponza
-  - Obtained from [KhronosGroup glTF-Sample-Models repository], converted to .glb
+  - Obtained from [KhronosGroup glTF-Sample-Models repository](https://github.com/KhronosGroup/glTF-Sample-Models/tree/16e2408d31e06d4b0bcf6123db472e802d71f081/2.0/Sponza), converted to .glb
