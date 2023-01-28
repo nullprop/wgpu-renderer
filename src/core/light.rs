@@ -12,11 +12,11 @@ pub struct LightUniform {
 
 impl LightUniform {
     pub fn new(position: [f32; 3], color: [f32; 4]) -> Self {
-        return LightUniform {
+        Self {
             position,
             _padding: 0,
             color,
-        };
+        }
     }
 }
 

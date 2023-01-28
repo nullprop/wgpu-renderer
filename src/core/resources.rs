@@ -8,10 +8,6 @@ use crate::core::texture::Texture;
 #[folder = "res"]
 struct Asset;
 
-pub fn load_binary(file_name: &str) -> Vec<u8> {
-    Asset::get(file_name).unwrap().data.into_owned()
-}
-
 pub fn load_string(file_name: &str) -> String {
     let binary = Asset::get(file_name).unwrap();
     std::str::from_utf8(binary.data.as_ref()).unwrap().to_owned()
@@ -258,7 +254,7 @@ pub async fn load_model_gltf(
 
         materials.push(Material::new(
             device,
-            &material.name().unwrap_or("Default Material"),
+            material.name().unwrap_or("Default Material"),
             diffuse_texture,
             normal_texture,
             rm_texture,
@@ -336,5 +332,5 @@ fn gltf_pixels_to_wgpu(mut bytes: Vec<u8>, format: gltf::image::Format) -> Vec<u
             .collect();
     }
 
-    return bytes;
+    bytes
 }

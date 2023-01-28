@@ -23,7 +23,7 @@ impl Projection {
     }
 
     pub fn get_matrix(&self) -> cgmath::Matrix4<f32> {
-        return cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
+        cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar)
     }
 }
 
@@ -50,7 +50,7 @@ impl Camera {
 
     pub fn get_view_matrix(&self) -> cgmath::Matrix4<f32> {
         let (_right, up, forward) = self.get_vecs();
-        return cgmath::Matrix4::look_to_rh(self.position, forward, up);
+        cgmath::Matrix4::look_to_rh(self.position, forward, up)
     }
 
     pub fn get_vecs(
@@ -67,7 +67,7 @@ impl Camera {
             cgmath::Vector3::new(pitch_cos * yaw_cos, pitch_sin, pitch_cos * yaw_sin).normalize();
         let right = cgmath::Vector3::new(-yaw_sin, 0.0, yaw_cos).normalize();
         let up = right.cross(forward);
-        return (right, up, forward);
+        (right, up, forward)
     }
 
     pub fn update(&mut self, dt: Duration, controller: &CameraController) {
@@ -168,7 +168,7 @@ impl CameraController {
         window_event: Option<&WindowEvent>,
         device_event: Option<&DeviceEvent>,
     ) -> bool {
-        let mut handled = match window_event {
+        let handled = match window_event {
             None => false,
             Some(event) => match event {
                 WindowEvent::KeyboardInput {
@@ -185,27 +185,27 @@ impl CameraController {
                     match keycode {
                         VirtualKeyCode::W | VirtualKeyCode::Up => {
                             self.move_forward = amount;
-                            return true;
+                            true
                         }
                         VirtualKeyCode::A | VirtualKeyCode::Left => {
                             self.move_left = amount;
-                            return true;
+                            true
                         }
                         VirtualKeyCode::S | VirtualKeyCode::Down => {
                             self.move_backward = amount;
-                            return true;
+                            true
                         }
                         VirtualKeyCode::D | VirtualKeyCode::Right => {
                             self.move_right = amount;
-                            return true;
+                            true
                         }
                         VirtualKeyCode::Space => {
                             self.move_up = amount;
-                            return true;
+                            true
                         }
                         VirtualKeyCode::LControl => {
                             self.move_down = amount;
-                            return true;
+                            true
                         }
                         _ => false,
                     }
@@ -217,7 +217,7 @@ impl CameraController {
                         } else {
                             self.speed /= 2.0;
                         }
-                        return true;
+                        true
                     }
                     MouseScrollDelta::PixelDelta(PhysicalPosition { y: scroll, .. }) => {
                         if *scroll > 0.0 {
@@ -225,7 +225,7 @@ impl CameraController {
                         } else {
                             self.speed /= 2.0;
                         }
-                        return true;
+                        true
                     }
                 },
                 _ => false,
@@ -236,15 +236,13 @@ impl CameraController {
             return true;
         }
 
-        handled = match device_event {
+        match device_event {
             Some(DeviceEvent::MouseMotion { delta }) => {
                 self.deltax += delta.0 as f32;
                 self.deltay += delta.1 as f32;
-                return true;
+                true
             }
             _ => false,
-        };
-
-        return handled;
+        }
     }
 }

@@ -280,7 +280,7 @@ impl State {
             )
         };
 
-        return Self {
+        Self {
             size,
             surface,
             device,
@@ -300,7 +300,7 @@ impl State {
             light_buffer,
             light_render_pipeline,
             light_bind_group,
-        };
+        }
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -322,9 +322,9 @@ impl State {
         window_event: Option<&WindowEvent>,
         device_event: Option<&DeviceEvent>,
     ) -> bool {
-        return self
+        self
             .camera_controller
-            .process_events(window_event, device_event);
+            .process_events(window_event, device_event)
     }
 
     pub fn update(&mut self, dt: Duration) {
@@ -411,7 +411,7 @@ impl State {
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
 
-        return Ok(());
+        Ok(())
     }
 }
 
@@ -425,7 +425,7 @@ fn create_render_pipeline(
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(shader);
 
-    return device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("Render Pipeline"),
         layout: Some(layout),
         vertex: wgpu::VertexState {
@@ -470,5 +470,5 @@ fn create_render_pipeline(
             alpha_to_coverage_enabled: false,
         },
         multiview: None,
-    });
+    })
 }
