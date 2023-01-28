@@ -31,8 +31,6 @@ pub async fn run() {
             .expect("Couldn't append canvas to document body.");
     }
 
-    lock_cursor(&window, true);
-
     let mut state = State::new(&window).await;
     let mut last_render = instant::Instant::now();
     let mut is_focused = true;
