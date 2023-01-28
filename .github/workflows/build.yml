@@ -1,0 +1,33 @@
+name: Build & Deploy pages
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deps
+      run: cargo install wasm-pack
+      
+    - name: Build
+      run: wasm-pack build --target web
+    
+    - name: Copy index.html
+      run: sed 's/.\/pkg/./g' index.html > pkg/index.html
+      
+    - name: Upload GitHub Pages artifact
+      uses: actions/upload-pages-artifact@v1.0.7
+      with:
+        path: pkg/
+    
+    - name: Deploy GitHub Pages site
+      uses: actions/deploy-pages@v1.2.3
