@@ -3,7 +3,8 @@
 A small [wgpu](https://github.com/gfx-rs/wgpu) renderer written in [Rust](https://github.com/rust-lang/rust).
 
 ## Try it out
-[rasanen.dev/wgpu-renderer](https://rasanen.dev/wgpu-renderer)
+[rasanen.dev/wgpu-renderer](https://rasanen.dev/wgpu-renderer)  
+Note: the .wasm is about 50 MB because it embeds Sponza.
 
 Controls:
 - WASD - Move horizontally
