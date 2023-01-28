@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use super::state::State;
 use winit::{
     event::*,
@@ -14,14 +12,9 @@ pub async fn run() {
         .with_maximized(true)
         .build(&event_loop)
         .unwrap();
-    let mut state = State::new(&window).await;
-    let mut last_render = Instant::now();
 
     #[cfg(target_arch = "wasm32")]
     {
-        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-        console_log::init().expect("could not initialize logger");
-        
         // Winit prevents sizing with CSS, so we have to set
         // the size manually when on web.
         use winit::dpi::PhysicalSize;
@@ -37,14 +30,12 @@ pub async fn run() {
             })
             .expect("Couldn't append canvas to document body.");
     }
-    #[cfg(not(target_arch = "wasm"))]
-    {
-        window
-        .set_cursor_grab(winit::window::CursorGrabMode::Confined)
-        .unwrap();
-    }
 
-    window.set_cursor_visible(false);
+    lock_cursor(&window, true);
+
+    let mut state = State::new(&window).await;
+    let mut last_render = instant::Instant::now();
+    let mut is_focused = true;
 
     // Event loop
     event_loop.run(move |event, _, control_flow| {
@@ -67,7 +58,12 @@ pub async fn run() {
                                     ..
                                 },
                             ..
-                        } => *control_flow = ControlFlow::Exit,
+                        } => {
+                            #[cfg(not(target_arch = "wasm32"))]
+                            {
+                                *control_flow = ControlFlow::Exit;
+                            }
+                        }
                         WindowEvent::Resized(physical_size) => {
                             state.resize(*physical_size);
                         }
@@ -75,32 +71,28 @@ pub async fn run() {
                             state.resize(**new_inner_size);
                         }
                         WindowEvent::Focused(focused) => {
-                            window
-                                .set_cursor_grab(if *focused {
-                                    winit::window::CursorGrabMode::Confined
-                                } else {
-                                    winit::window::CursorGrabMode::None
-                                })
-                                .unwrap();
-                            window.set_cursor_visible(!*focused);
+                            lock_cursor(&window, *focused);
+                            is_focused = *focused;
                         }
                         _ => {}
                     }
                 }
             }
             Event::RedrawRequested(window_id) if window_id == window.id() => {
-                let now = Instant::now();
+                let now = instant::Instant::now();
                 let dt = now - last_render;
                 last_render = now;
-                state.update(dt);
-                match state.render() {
-                    Ok(_) => {}
-                    // Reconfigure the surface if lost
-                    Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
-                    // The system is out of memory, we should probably quit
-                    Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                    // All other errors (Outdated, Timeout) should be resolved by the next frame
-                    Err(e) => eprintln!("{:?}", e),
+                if is_focused {
+                    state.update(dt);
+                    match state.render() {
+                        Ok(_) => {}
+                        // Reconfigure the surface if lost
+                        Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
+                        // The system is out of memory, we should probably quit
+                        Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                        // All other errors (Outdated, Timeout) should be resolved by the next frame
+                        Err(e) => eprintln!("{:?}", e),
+                    }
                 }
             }
             Event::MainEventsCleared => {
@@ -111,4 +103,22 @@ pub async fn run() {
             _ => {}
         }
     });
+}
+
+fn lock_cursor(window: &winit::window::Window, lock: bool) {
+    if lock {
+        window
+            .set_cursor_grab(if cfg!(target_arch = "wasm32") {
+                winit::window::CursorGrabMode::Locked
+            } else {
+                winit::window::CursorGrabMode::Confined
+            })
+            .unwrap();
+        window.set_cursor_visible(false);
+    } else {
+        window
+            .set_cursor_grab(winit::window::CursorGrabMode::None)
+            .unwrap();
+        window.set_cursor_visible(true);
+    }
 }
