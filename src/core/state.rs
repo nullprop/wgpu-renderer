@@ -80,7 +80,7 @@ impl State {
 
         // Camera
         let camera = Camera::new(
-            (0.0, 0.0, 0.0).into(),
+            (-500.0, 150.0, 0.0).into(),
             0.0,
             0.0,
             55.0,
@@ -118,9 +118,9 @@ impl State {
             label: Some("camera_bind_group"),
         });
 
-        let camera_controller = CameraController::new(1.0, 2.0);
+        let camera_controller = CameraController::new(400.0, 2.0);
 
-        let light_uniform = LightUniform::new([100.0, 60.0, 0.0], [1.0, 1.0, 1.0, 1000000.0]);
+        let light_uniform = LightUniform::new([100.0, 60.0, 0.0], [1.0, 1.0, 1.0, 100000.0]);
 
         // We'll want to update our lights position, so we use COPY_DST
         let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
