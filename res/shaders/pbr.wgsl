@@ -144,15 +144,16 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     );
 
     // ambient
-    let ambient_light_color = vec3(1.0);
-    let ambient_strength = 0.025;
-    let ambient_color = ambient_light_color * ambient_strength;
+    let ambient_strength = 0.01;
+    let ambient_color = ambient_strength * albedo;
 
     var result = ambient_color + total_radiance;
 
     // tonemap
     result = result / (result + vec3(1.0));
-    //result = pow(result, vec3(1.0/2.2));
+    // gamma correction
+    // TODO: seems to already be handled by wgpu?
+    // result = pow(result, vec3(1.0/2.2));
 
     return vec4<f32>(result, object_color.a);
 }
