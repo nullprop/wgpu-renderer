@@ -57,7 +57,7 @@ impl Material {
             label: None,
         });
 
-        return Self {
+        Self {
             name: String::from(name),
             diffuse_texture,
             normal_texture,
@@ -65,7 +65,7 @@ impl Material {
             metallic_factor,
             roughness_factor,
             bind_group,
-        };
+        }
     }
 }
 

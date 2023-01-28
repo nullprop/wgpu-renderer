@@ -1,5 +1,4 @@
 use anyhow::*;
-use image::GenericImageView;
 
 pub struct Texture {
     pub texture: wgpu::Texture,
@@ -50,41 +49,6 @@ impl Texture {
             view,
             sampler,
         }
-    }
-
-    pub fn from_bytes(
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        bytes: &[u8],
-        label: &str,
-        is_normal_map: bool,
-    ) -> Result<Self> {
-        let img = image::load_from_memory(bytes)?;
-        return Self::from_image(device, queue, &img, Some(label), is_normal_map);
-    }
-
-    pub fn from_image(
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        img: &image::DynamicImage,
-        label: Option<&str>,
-        is_normal_map: bool,
-    ) -> Result<Self> {
-        let rgba = img.to_rgba8();
-        let dimensions = img.dimensions();
-        return Self::from_pixels(
-            device,
-            queue,
-            &rgba,
-            dimensions,
-            4,
-            if is_normal_map {
-                wgpu::TextureFormat::Rgba8UnormSrgb
-            } else {
-                wgpu::TextureFormat::Rgba8Unorm
-            },
-            label,
-        );
     }
 
     pub fn from_pixels(
@@ -140,10 +104,10 @@ impl Texture {
             ..Default::default()
         });
 
-        return Ok(Self {
+        Ok(Self {
             texture,
             view,
             sampler,
-        });
+        })
     }
 }

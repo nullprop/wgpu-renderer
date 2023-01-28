@@ -19,5 +19,5 @@ pub fn preprocess_wgsl(filename: &str) -> wgpu::ShaderSource {
         source = source.replace(whole_match, &nested_source);
     }
 
-    return wgpu::ShaderSource::Wgsl(source.into());
+    wgpu::ShaderSource::Wgsl(source.into())
 }
