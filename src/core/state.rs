@@ -341,8 +341,8 @@ impl State {
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let output = self.surface.get_current_texture()?;
-        let view = output
+        let surface_texture = self.surface.get_current_texture()?;
+        let surface_view = surface_texture
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
         let mut encoder = self
@@ -352,10 +352,10 @@ impl State {
             });
 
         {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass"),
+            let mut geom_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Geometry Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view: &surface_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -377,16 +377,9 @@ impl State {
                 }),
             });
 
-            render_pass.set_pipeline(&self.light_debug_pass.pipeline);
-            render_pass.draw_light_model(
-                &self.light_model,
-                &self.camera_bind_group,
-                &self.light_bind_group,
-            );
-
-            render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-            render_pass.set_pipeline(&self.geometry_pass.pipeline);
-            render_pass.draw_model_instanced(
+            geom_render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+            geom_render_pass.set_pipeline(&self.geometry_pass.pipeline);
+            geom_render_pass.draw_model_instanced(
                 &self.model,
                 0..self.instances.len() as u32,
                 &self.camera_bind_group,
@@ -394,9 +387,39 @@ impl State {
             );
         }
 
+        {
+            let mut light_debug_render_pass =
+                encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Light Debug Render Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &surface_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: true,
+                        },
+                    })],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &self.depth_texture.view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: true,
+                        }),
+                        stencil_ops: None,
+                    }),
+                });
+
+            light_debug_render_pass.set_pipeline(&self.light_debug_pass.pipeline);
+            light_debug_render_pass.draw_light_model(
+                &self.light_model,
+                &self.camera_bind_group,
+                &self.light_bind_group,
+            );
+        }
+
         // submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(encoder.finish()));
-        output.present();
+        surface_texture.present();
 
         Ok(())
     }
