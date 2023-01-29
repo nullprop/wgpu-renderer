@@ -62,3 +62,5 @@ For miniserve, see:
 ## Assets
 - Sponza
   - Obtained from [KhronosGroup glTF-Sample-Models repository](https://github.com/KhronosGroup/glTF-Sample-Models/tree/16e2408d31e06d4b0bcf6123db472e802d71f081/2.0/Sponza), converted to .glb
+- Cube
+  - Obtained from [KhronosGroup glTF-Sample-Models repository](https://github.com/KhronosGroup/glTF-Sample-Models/tree/16e2408d31e06d4b0bcf6123db472e802d71f081/2.0/Cube), converted to .glb

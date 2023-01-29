@@ -29,6 +29,7 @@ pub struct State {
     instance_buffer: wgpu::Buffer,
     depth_texture: Texture,
     model: Model,
+    light_model: Model,
     light_uniform: LightUniform,
     light_buffer: wgpu::Buffer,
     light_debug_pass: RenderPass,
@@ -222,6 +223,15 @@ impl State {
         .await
         .unwrap();
 
+        let light_model = resources::load_model_gltf(
+            "models/Cube.glb",
+            &device,
+            &queue,
+            &texture_bind_group_layout,
+        )
+        .await
+        .unwrap();
+
         let instances = vec![Instance {
             position: [0.0, 0.0, 0.0].into(),
             rotation: cgmath::Quaternion::one(),
@@ -276,6 +286,7 @@ impl State {
             instance_buffer,
             depth_texture,
             model,
+            light_model,
             light_uniform,
             light_buffer,
             light_debug_pass,
@@ -366,16 +377,14 @@ impl State {
                 }),
             });
 
-            // TODO: only use for geom, not lights
-            render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-
             render_pass.set_pipeline(&self.light_debug_pass.pipeline);
             render_pass.draw_light_model(
-                &self.model,
+                &self.light_model,
                 &self.camera_bind_group,
                 &self.light_bind_group,
             );
 
+            render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
             render_pass.set_pipeline(&self.geometry_pass.pipeline);
             render_pass.draw_model_instanced(
                 &self.model,
