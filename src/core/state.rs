@@ -34,6 +34,8 @@ pub struct State {
     light_buffer: wgpu::Buffer,
     light_debug_pass: RenderPass,
     light_bind_group: wgpu::BindGroup,
+    light_depth_pass: RenderPass,
+    light_depth_texture: Texture,
 }
 
 impl State {
@@ -121,6 +123,19 @@ impl State {
 
         let camera_controller = CameraController::new(400.0, 2.0);
 
+        let depth_texture = Texture::create_depth_texture(
+            &device,
+            &config,
+            "depth_texture",
+            Some(wgpu::CompareFunction::LessEqual),
+        );
+        let light_depth_texture = Texture::create_depth_texture(
+            &device,
+            &config,
+            "light_depth_texture",
+            Some(wgpu::CompareFunction::LessEqual),
+        );
+
         let light_uniform = LightUniform::new([100.0, 60.0, 0.0], [1.0, 1.0, 1.0, 200000.0]);
 
         // We'll want to update our lights position, so we use COPY_DST
@@ -132,26 +147,55 @@ impl State {
 
         let light_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                }],
-                label: None,
+                    // depth
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Depth,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
+                        count: None,
+                    },
+                ],
+                label: Some("Light Bind Group Layout"),
             });
 
         let light_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &light_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: light_buffer.as_entire_binding(),
-            }],
-            label: None,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: light_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&light_depth_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&light_depth_texture.sampler),
+                },
+            ],
+            label: Some("Light Bind Group"),
         });
 
         surface.configure(&device, &config);
@@ -244,20 +288,19 @@ impl State {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        let depth_texture = Texture::create_depth_texture(&device, &config, "depth_texture");
-
         let geometry_pass = RenderPass::new(
             &device,
             &[
-                &texture_bind_group_layout,
                 &camera_bind_group_layout,
                 &light_bind_group_layout,
+                &texture_bind_group_layout,
             ],
             &[],
             "pbr.wgsl",
-            config.format,
+            Some(config.format),
             Some(Texture::DEPTH_FORMAT),
             &[ModelVertex::desc(), InstanceRaw::desc()],
+            "geometry pass",
         );
 
         let light_debug_pass = RenderPass::new(
@@ -265,9 +308,25 @@ impl State {
             &[&camera_bind_group_layout, &light_bind_group_layout],
             &[],
             "light.wgsl",
-            config.format,
+            Some(config.format),
             Some(Texture::DEPTH_FORMAT),
             &[ModelVertex::desc()],
+            "light debug pass",
+        );
+
+        let light_depth_pass = RenderPass::new(
+            &device,
+            &[
+                &camera_bind_group_layout,
+                &light_bind_group_layout,
+                &texture_bind_group_layout,
+            ],
+            &[],
+            "depth.wgsl",
+            None,
+            Some(Texture::DEPTH_FORMAT),
+            &[ModelVertex::desc(), InstanceRaw::desc()],
+            "light depth pass",
         );
 
         Self {
@@ -291,6 +350,8 @@ impl State {
             light_buffer,
             light_debug_pass,
             light_bind_group,
+            light_depth_pass,
+            light_depth_texture,
         }
     }
 
@@ -303,8 +364,18 @@ impl State {
             self.camera
                 .projection
                 .resize(new_size.width, new_size.height);
-            self.depth_texture =
-                Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
+            self.depth_texture = Texture::create_depth_texture(
+                &self.device,
+                &self.config,
+                "depth_texture",
+                Some(wgpu::CompareFunction::LessEqual),
+            );
+            self.light_depth_texture = Texture::create_depth_texture(
+                &self.device,
+                &self.config,
+                "light_depth_texture",
+                Some(wgpu::CompareFunction::LessEqual),
+            );
         }
     }
 
@@ -350,6 +421,33 @@ impl State {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
+
+        /*
+        {
+            let mut light_depth_render_pass =
+                encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Light Depth Render Pass"),
+                    color_attachments: &[],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &self.light_depth_texture.view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(1.0),
+                            store: true,
+                        }),
+                        stencil_ops: None,
+                    }),
+                });
+
+            light_depth_render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+            light_depth_render_pass.set_pipeline(&self.light_depth_pass.pipeline);
+            light_depth_render_pass.draw_model_instanced(
+                &self.model,
+                0..self.instances.len() as u32,
+                &self.camera_bind_group, // TODO light projection
+                &self.light_bind_group, // TODO remove
+            );
+        }
+        */
 
         {
             let mut geom_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

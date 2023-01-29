@@ -13,6 +13,7 @@ impl Texture {
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
         label: &str,
+        compare: Option<wgpu::CompareFunction>,
     ) -> Self {
         let size = wgpu::Extent3d {
             width: config.width,
@@ -38,7 +39,7 @@ impl Texture {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::FilterMode::Nearest,
-            compare: Some(wgpu::CompareFunction::LessEqual),
+            compare,
             lod_min_clamp: -100.0,
             lod_max_clamp: 100.0,
             ..Default::default()
