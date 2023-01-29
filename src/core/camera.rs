@@ -7,23 +7,52 @@ pub struct Camera {
     pub position: cgmath::Point3<f32>,
     pub pitch: f32,
     pub yaw: f32,
-    pub projection: Projection,
+    pub projection: PerspectiveProjection,
 }
 
-pub struct Projection {
+pub struct PerspectiveProjection {
     pub aspect: f32,
     pub fovy: f32,
     pub znear: f32,
     pub zfar: f32,
 }
 
-impl Projection {
+impl PerspectiveProjection {
     pub fn resize(&mut self, width: u32, height: u32) {
         self.aspect = width as f32 / height as f32;
     }
 
     pub fn get_matrix(&self) -> cgmath::Matrix4<f32> {
         cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar)
+    }
+}
+
+pub struct OrthoProjection {
+    pub left: f32,
+    pub right: f32,
+    pub bottom: f32,
+    pub top: f32,
+    pub znear: f32,
+    pub zfar: f32,
+}
+
+impl OrthoProjection {
+    pub fn resize(&mut self, width: u32, height: u32) {
+        self.left = width as f32 * -0.5;
+        self.right = width as f32 * 0.5;
+        self.bottom = height as f32 * -0.5;
+        self.top = height as f32 * 0.5;
+    }
+
+    pub fn get_matrix(&self) -> cgmath::Matrix4<f32> {
+        cgmath::ortho(
+            self.left,
+            self.right,
+            self.bottom,
+            self.top,
+            self.znear,
+            self.zfar,
+        )
     }
 }
 
@@ -39,7 +68,7 @@ impl Camera {
             position,
             pitch,
             yaw,
-            projection: Projection {
+            projection: PerspectiveProjection {
                 aspect,
                 fovy,
                 znear: 0.1,

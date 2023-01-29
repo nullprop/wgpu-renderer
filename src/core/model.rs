@@ -7,7 +7,7 @@ pub struct Material {
     pub diffuse_texture: Texture,
     pub normal_texture: Texture,
     pub metallic_roughness_texture: Texture,
-    pub metallic_factor: f32, // TODO pass to shader
+    pub metallic_factor: f32,  // TODO pass to shader
     pub roughness_factor: f32, // TODO pass to shader
     pub bind_group: wgpu::BindGroup,
 }
@@ -194,9 +194,9 @@ where
     ) {
         self.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
         self.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-        self.set_bind_group(0, &material.bind_group, &[]);
-        self.set_bind_group(1, camera_bind_group, &[]);
-        self.set_bind_group(2, light_bind_group, &[]);
+        self.set_bind_group(0, camera_bind_group, &[]);
+        self.set_bind_group(1, light_bind_group, &[]);
+        self.set_bind_group(2, &material.bind_group, &[]);
         self.draw_indexed(0..mesh.num_elements, 0, instances);
     }
 
