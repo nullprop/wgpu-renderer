@@ -20,12 +20,12 @@ impl LightUniform {
         let proj = cgmath::perspective(cgmath::Deg(90.0), 1.0, 0.1, 1000.0);
         #[rustfmt::skip]
         let matrices: [[[f32; 4]; 4]; 6] = [
-            (proj * Matrix4::look_to_rh(position.into(),  Into::<Vector3<f32>>::into(position) + Vector3::new( 1.0, 0.0, 0.0), Vector3::new(0.0,-1.0, 0.0))).into(),
-            (proj * Matrix4::look_to_rh(position.into(),  Into::<Vector3<f32>>::into(position) + Vector3::new(-1.0, 0.0, 0.0), Vector3::new(0.0,-1.0, 0.0))).into(),
-            (proj * Matrix4::look_to_rh(position.into(),  Into::<Vector3<f32>>::into(position) + Vector3::new( 0.0, 1.0, 0.0), Vector3::new(0.0, 0.0, 1.0))).into(),
-            (proj * Matrix4::look_to_rh(position.into(),  Into::<Vector3<f32>>::into(position) + Vector3::new( 0.0,-1.0, 0.0), Vector3::new(0.0, 0.0,-1.0))).into(),
-            (proj * Matrix4::look_to_rh(position.into(),  Into::<Vector3<f32>>::into(position) + Vector3::new( 0.0, 0.0, 1.0), Vector3::new(0.0,-1.0, 0.0))).into(),
-            (proj * Matrix4::look_to_rh(position.into(),  Into::<Vector3<f32>>::into(position) + Vector3::new( 0.0, 0.0,-1.0), Vector3::new(0.0,-1.0, 0.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 1.0, 0.0, 0.0), Vector3::new(0.0,-1.0, 0.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(), Vector3::new(-1.0, 0.0, 0.0), Vector3::new(0.0,-1.0, 0.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0, 1.0, 0.0), Vector3::new(0.0, 0.0, 1.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0,-1.0, 0.0), Vector3::new(0.0, 0.0,-1.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0, 0.0, 1.0), Vector3::new(0.0,-1.0, 0.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0, 0.0,-1.0), Vector3::new(0.0,-1.0, 0.0))).into(),
         ];
 
         Self {
