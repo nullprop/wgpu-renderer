@@ -39,8 +39,7 @@ fn vs_main(
     out.tangent_light_position = tangent_matrix * light.position;
     out.tangent_view_position = tangent_matrix * camera.position.xyz;
 
-    out.world_position = world_position.xyz;
-    out.light_local_position = camera.proj * camera.view * world_position;
+    out.world_position = world_position;
 
     return out;
 }
@@ -62,46 +61,74 @@ var t_roughness_metalness: texture_2d<f32>;
 @group(2) @binding(5)
 var s_roughness_metalness: sampler;
 
+fn sample_direct_light(index: i32, light_coords: vec4<f32>) -> f32 {
+    if (light_coords.w <= 0.0) {
+        return 1.0;
+    }
+
+    let flip_correction = vec2<f32>(0.5, -0.5);
+    let proj_correction = 1.0 / light_coords.w;
+    let light_local = light_coords.xy * flip_correction * proj_correction + vec2<f32>(0.5, 0.5);
+
+    return textureSampleCompareLevel(
+        t_light_depth[index],
+        s_light_depth[index],
+        light_local,
+        light_coords.z * proj_correction
+    );
+}
+
 @fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+fn fs_main(vert: VertexOutput) -> @location(0) vec4<f32> {
     // textures
-    let object_color: vec4<f32> = textureSample(t_diffuse, s_diffuse, in.tex_coords);
-    let object_normal: vec4<f32> = textureSample(t_normal, s_normal, in.tex_coords);
+    let object_color: vec4<f32> = textureSample(t_diffuse, s_diffuse, vert.tex_coords);
+    let object_normal: vec4<f32> = textureSample(t_normal, s_normal, vert.tex_coords);
     let object_roughness_metalness: vec4<f32> = textureSample(
-        t_roughness_metalness, s_roughness_metalness, in.tex_coords);
-    //let light_depth = textureSampleCompareLevel(t_light_depth, s_light_depth, in.light_local_position.xy, 1.0);
+        t_roughness_metalness, s_roughness_metalness, vert.tex_coords);
 
     let albedo = object_color.xyz;
     // TODO: pass factors to shader
     let roughness = object_roughness_metalness.y * 1.0;
     let metalness = object_roughness_metalness.z * 1.0;
     
-    // lighting vecs
-    let normal_dir = object_normal.xyz * 2.0 - 1.0;
-    var light_dir = normalize(in.tangent_light_position - in.tangent_position);
-    let view_dir = normalize(in.tangent_view_position - in.tangent_position);
-    let half_dir = normalize(view_dir + light_dir);
+    var total_radiance: vec3<f32>;
 
-    // attenuation
-    let light_dist = length(light.position - in.world_position);
-    let coef_a = 0.0;
-    let coef_b = 1.0;
-    let light_attenuation = 1.0 / (1.0 + coef_a * light_dist + coef_b * light_dist * light_dist);
+    var in_light = 0.0;
+    for (var i: i32 = 0; i < 6; i++) {
+        in_light = sample_direct_light(i, light.matrices[i] * vert.world_position);
+        if (in_light > 0.0) {
+            break;
+        }
+    }
 
-    // radiance
-    let radiance_strength = max(dot(normal_dir, light_dir), 0.0);
-    let radiance = radiance_strength * light.color.xyz * light.color.w * light_attenuation;
+    if (in_light > 0.0) {
+        // lighting vecs
+        let normal_dir = object_normal.xyz * 2.0 - 1.0;
+        var light_dir = normalize(vert.tangent_light_position - vert.tangent_position);
+        let view_dir = normalize(vert.tangent_view_position - vert.tangent_position);
+        let half_dir = normalize(view_dir + light_dir);
 
-    // brdf shading
-    let total_radiance = radiance * brdf(
-        normal_dir,
-        light_dir,
-        view_dir,
-        half_dir,
-        albedo,
-        roughness,
-        metalness
-    );
+        // attenuation
+        let light_dist = length(light.position - vert.world_position.xyz);
+        let coef_a = 0.0;
+        let coef_b = 1.0;
+        let light_attenuation = 1.0 / (1.0 + coef_a * light_dist + coef_b * light_dist * light_dist);
+
+        // radiance
+        let radiance_strength = max(dot(normal_dir, light_dir), 0.0);
+        let radiance = radiance_strength * light.color.xyz * light.color.w * light_attenuation;
+
+        // brdf shading
+        total_radiance += radiance * brdf(
+            normal_dir,
+            light_dir,
+            view_dir,
+            half_dir,
+            albedo,
+            roughness,
+            metalness
+        );
+    }
 
     // ambient
     let ambient_strength = 0.01;

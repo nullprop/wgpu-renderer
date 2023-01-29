@@ -27,35 +27,6 @@ impl PerspectiveProjection {
     }
 }
 
-pub struct OrthoProjection {
-    pub left: f32,
-    pub right: f32,
-    pub bottom: f32,
-    pub top: f32,
-    pub znear: f32,
-    pub zfar: f32,
-}
-
-impl OrthoProjection {
-    pub fn resize(&mut self, width: u32, height: u32) {
-        self.left = width as f32 * -0.5;
-        self.right = width as f32 * 0.5;
-        self.bottom = height as f32 * -0.5;
-        self.top = height as f32 * 0.5;
-    }
-
-    pub fn get_matrix(&self) -> cgmath::Matrix4<f32> {
-        cgmath::ortho(
-            self.left,
-            self.right,
-            self.bottom,
-            self.top,
-            self.znear,
-            self.zfar,
-        )
-    }
-}
-
 impl Camera {
     pub fn new(
         position: cgmath::Point3<f32>,
