@@ -2,20 +2,39 @@ use std::ops::Range;
 
 use super::model::{Mesh, Model};
 
+use cgmath::{Matrix4, Vector3};
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct LightUniform {
     pub position: [f32; 3],
     _padding: u32,
     pub color: [f32; 4],
+    pub matrices: [[[f32; 4]; 4]; 6],
+    pub active_matrix: u32,
+    _padding2: [u32; 3],
 }
 
 impl LightUniform {
     pub fn new(position: [f32; 3], color: [f32; 4]) -> Self {
+        let proj = cgmath::perspective(cgmath::Deg(90.0), 1.0, 0.1, 1000.0);
+        #[rustfmt::skip]
+        let matrices: [[[f32; 4]; 4]; 6] = [
+            (proj * Matrix4::look_to_rh(position.into(),  Into::<Vector3<f32>>::into(position) + Vector3::new( 1.0, 0.0, 0.0), Vector3::new(0.0,-1.0, 0.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(),  Into::<Vector3<f32>>::into(position) + Vector3::new(-1.0, 0.0, 0.0), Vector3::new(0.0,-1.0, 0.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(),  Into::<Vector3<f32>>::into(position) + Vector3::new( 0.0, 1.0, 0.0), Vector3::new(0.0, 0.0, 1.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(),  Into::<Vector3<f32>>::into(position) + Vector3::new( 0.0,-1.0, 0.0), Vector3::new(0.0, 0.0,-1.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(),  Into::<Vector3<f32>>::into(position) + Vector3::new( 0.0, 0.0, 1.0), Vector3::new(0.0,-1.0, 0.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(),  Into::<Vector3<f32>>::into(position) + Vector3::new( 0.0, 0.0,-1.0), Vector3::new(0.0,-1.0, 0.0))).into(),
+        ];
+
         Self {
             position,
             _padding: 0,
             color,
+            matrices: matrices,
+            active_matrix: 0,
+            _padding2: [0, 0, 0]
         }
     }
 }

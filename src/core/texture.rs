@@ -1,5 +1,6 @@
 use anyhow::*;
 
+#[derive(Debug)]
 pub struct Texture {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
@@ -14,11 +15,12 @@ impl Texture {
         config: &wgpu::SurfaceConfiguration,
         label: &str,
         compare: Option<wgpu::CompareFunction>,
+        layers: u32,
     ) -> Self {
         let size = wgpu::Extent3d {
             width: config.width,
             height: config.height,
-            depth_or_array_layers: 1,
+            depth_or_array_layers: layers,
         };
         let desc = wgpu::TextureDescriptor {
             label: Some(label),
