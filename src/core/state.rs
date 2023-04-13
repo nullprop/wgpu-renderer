@@ -477,7 +477,7 @@ impl State {
             light_depth_render_pass.set_pipeline(&self.light_depth_pass.pipeline);
             // TODO separate func
             light_depth_render_pass.draw_model_instanced(
-                &self.light_model,
+                &self.model,
                 0..self.instances.len() as u32,
                 &self.camera_bind_group,
                 &self.light_bind_group,
