@@ -48,11 +48,11 @@ Standalone:
 cargo run --release
 ```
 
-WASM requires [miniserve](https://github.com/svenstaro/miniserve), or some other http server, such as `python3 -m http.server`.  
-For miniserve, see:
-```sh
-./run-wasm.sh
-```
+WASM requires:
+- [wasm-pack](https://github.com/rustwasm/wasm-pack)
+  - `cargo install wasm-pack`
+- [miniserve](https://github.com/svenstaro/miniserve), or some other http server, such as `python3 -m http.server`.
+  - For miniserve, see: `run-wasm.sh`
 
 ## References
 - [wgpu examples](https://github.com/gfx-rs/wgpu/blob/master/wgpu/examples)
