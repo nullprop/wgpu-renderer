@@ -450,6 +450,7 @@ impl State {
                 label: Some("Render Encoder"),
             });
 
+        encoder.push_debug_group("shadow passes");
         for i in 0..6 {
             self.light_uniform.active_matrix = i as u32;
             self.queue.write_buffer(
@@ -482,7 +483,9 @@ impl State {
                 &self.light_bind_group,
             );
         }
+        encoder.pop_debug_group();
 
+        encoder.push_debug_group("geometry pass");
         {
             let mut geom_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Geometry Render Pass"),
@@ -518,7 +521,9 @@ impl State {
                 &self.light_bind_group,
             );
         }
+        encoder.pop_debug_group();
 
+        encoder.push_debug_group("debug light pass");
         {
             let mut light_debug_render_pass =
                 encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -548,6 +553,7 @@ impl State {
                 &self.light_bind_group,
             );
         }
+        encoder.pop_debug_group();
 
         // submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(encoder.finish()));
