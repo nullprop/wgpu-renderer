@@ -17,7 +17,7 @@ opt-level = 1 # loading gltf is super slow without this
 winit = "0.28.3"
 env_logger = "0.10.0"
 log = "0.4.17"
-wgpu = "0.14.2"
+wgpu = "0.15.1"
 pollster = "0.2.5"
 bytemuck = { version = "1.13.0", features = ["derive"] }
 image = { version = "0.24.5", features = ["png", "tga"] }
@@ -25,7 +25,7 @@ anyhow = "1.0.68"
 cgmath = "0.18"
 tobj = { version = "3.2.1", features = ["async"] }
 gltf = "1.0.0"
-wgpu-types = "0.14.1"
+wgpu-types = "0.15.2"
 regex = "1.7.1"
 rust-embed = { version = "6.4.2", features = ["debug-embed"]}
 cfg-if = "1"
@@ -34,7 +34,7 @@ instant = "0.1.12"
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.6"
 console_log = "0.2.0"
-wgpu = { version = "0.14", features = ["webgl"]}
+wgpu = { version = "0.15.1", features = ["webgl"]}
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4.30"
 web-sys = { version = "0.3", features = [
