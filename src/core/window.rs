@@ -5,13 +5,28 @@ use winit::{
     window::WindowBuilder,
 };
 
-pub async fn run() {
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new()
+#[cfg(debug_assertions)]
+fn create_window(event_loop: &EventLoop<()>) -> winit::window::Window {
+    use winit::dpi::PhysicalSize;
+    WindowBuilder::new()
+        .with_inner_size(PhysicalSize::new(1280, 720))
+        .with_maximized(false)
+        .build(event_loop)
+        .unwrap()
+}
+
+#[cfg(not(debug_assertions))]
+fn create_window(event_loop: &EventLoop<()>) -> winit::window::Window {
+    WindowBuilder::new()
         .with_fullscreen(Some(winit::window::Fullscreen::Borderless(None)))
         .with_maximized(true)
-        .build(&event_loop)
-        .unwrap();
+        .build(event_loop)
+        .unwrap()
+}
+
+pub async fn run() {
+    let event_loop = EventLoop::new();
+    let window = create_window(&event_loop);
 
     #[cfg(target_arch = "wasm32")]
     {
