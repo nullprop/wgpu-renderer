@@ -129,7 +129,7 @@ impl State {
             &device,
             &config,
             "depth_texture",
-            Some(wgpu::CompareFunction::LessEqual),
+            Some(wgpu::CompareFunction::Less),
             1,
         );
 
@@ -139,7 +139,7 @@ impl State {
                     &device,
                     &config,
                     format!("light_depth_texture_{}", i).as_str(),
-                    Some(wgpu::CompareFunction::LessEqual),
+                    Some(wgpu::CompareFunction::Less),
                     1,
                 )
             })
@@ -392,7 +392,7 @@ impl State {
                 &self.device,
                 &self.config,
                 "depth_texture",
-                Some(wgpu::CompareFunction::LessEqual),
+                Some(wgpu::CompareFunction::Less),
                 1,
             );
             for i in 0..6 {
@@ -400,7 +400,7 @@ impl State {
                     &self.device,
                     &self.config,
                     format!("light_depth_texture_{}", i).as_str(),
-                    Some(wgpu::CompareFunction::LessEqual),
+                    Some(wgpu::CompareFunction::Less),
                     1,
                 );
             }
