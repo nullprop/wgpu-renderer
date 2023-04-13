@@ -14,7 +14,7 @@ path = "src/main.rs"
 opt-level = 1 # loading gltf is super slow without this
 
 [dependencies]
-winit = "0.27.5"
+winit = "0.28.3"
 env_logger = "0.10.0"
 log = "0.4.17"
 wgpu = "0.14.2"
