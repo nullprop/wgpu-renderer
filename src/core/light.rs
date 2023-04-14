@@ -11,7 +11,6 @@ pub struct LightUniform {
     _padding: u32,
     pub color: [f32; 4],
     pub matrices: [[[f32; 4]; 4]; 6],
-    pub active_matrix: u32,
     _padding2: [u32; 3],
 }
 
@@ -20,12 +19,12 @@ impl LightUniform {
         let proj = cgmath::perspective(cgmath::Deg(90.0), 1.0, 0.1, 1000.0);
         #[rustfmt::skip]
         let matrices: [[[f32; 4]; 4]; 6] = [
-            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 1.0, 0.0, 0.0), Vector3::new(0.0,-1.0, 0.0))).into(),
-            (proj * Matrix4::look_to_rh(position.into(), Vector3::new(-1.0, 0.0, 0.0), Vector3::new(0.0,-1.0, 0.0))).into(),
-            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0, 1.0, 0.0), Vector3::new(0.0, 0.0, 1.0))).into(),
-            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0,-1.0, 0.0), Vector3::new(0.0, 0.0,-1.0))).into(),
-            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0, 0.0, 1.0), Vector3::new(0.0,-1.0, 0.0))).into(),
-            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0, 0.0,-1.0), Vector3::new(0.0,-1.0, 0.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 1.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(), Vector3::new(-1.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0, 1.0, 0.0), Vector3::new(1.0, 0.0, 0.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0,-1.0, 0.0), Vector3::new(-1.0, 0.0, 0.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0, 0.0, 1.0), Vector3::new(0.0, 1.0, 0.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0, 0.0,-1.0), Vector3::new(0.0, 1.0, 0.0))).into(),
         ];
 
         Self {
@@ -33,7 +32,6 @@ impl LightUniform {
             _padding: 0,
             color,
             matrices: matrices,
-            active_matrix: 0,
             _padding2: [0, 0, 0]
         }
     }

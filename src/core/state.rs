@@ -39,6 +39,8 @@ pub struct State {
     light_bind_group: wgpu::BindGroup,
     light_depth_pass: RenderPass,
     light_depth_textures: [Texture; 6],
+    light_matrix_uniform: u32,
+    light_matrix_buffer: wgpu::Buffer,
 }
 
 impl State {
@@ -167,8 +169,15 @@ impl State {
 
         // We'll want to update our lights position, so we use COPY_DST
         let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Light VB"),
+            label: Some("Light UB"),
             contents: bytemuck::cast_slice(&[light_uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let light_matrix_uniform = 0;
+        let light_matrix_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Light Matrix UB"),
+            contents: bytemuck::cast_slice(&[light_matrix_uniform]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -186,9 +195,20 @@ impl State {
                         },
                         count: None,
                     },
-                    // depth
+                    // matrix index
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // depth textures
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             multisampled: false,
@@ -198,7 +218,7 @@ impl State {
                         count: NonZeroU32::new(6),
                     },
                     wgpu::BindGroupLayoutEntry {
-                        binding: 2,
+                        binding: 3,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
                         count: NonZeroU32::new(6),
@@ -210,16 +230,23 @@ impl State {
         let light_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &light_bind_group_layout,
             entries: &[
+                // light struct
                 wgpu::BindGroupEntry {
                     binding: 0,
                     resource: light_buffer.as_entire_binding(),
                 },
+                // matrix index
                 wgpu::BindGroupEntry {
                     binding: 1,
+                    resource: light_matrix_buffer.as_entire_binding(),
+                },
+                // depth textures
+                wgpu::BindGroupEntry {
+                    binding: 2,
                     resource: wgpu::BindingResource::TextureViewArray(&light_depth_texture_views),
                 },
                 wgpu::BindGroupEntry {
-                    binding: 2,
+                    binding: 3,
                     resource: wgpu::BindingResource::SamplerArray(&light_depth_texture_samplers),
                 },
             ],
@@ -380,6 +407,8 @@ impl State {
             light_bind_group,
             light_depth_pass,
             light_depth_textures,
+            light_matrix_uniform,
+            light_matrix_buffer,
         }
     }
 
@@ -444,27 +473,25 @@ impl State {
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let surface_texture = self.surface.get_current_texture()?;
-        let surface_view = surface_texture
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Render Encoder"),
-            });
 
-        encoder.push_debug_group("shadow passes");
+        // render light to depth textures
         for i in 0..6 {
-            self.light_uniform.active_matrix = i as u32;
+            self.light_matrix_uniform = i as u32;
             self.queue.write_buffer(
-                &self.light_buffer,
+                &self.light_matrix_buffer,
                 0,
-                bytemuck::cast_slice(&[self.light_uniform]),
+                bytemuck::cast_slice(&[self.light_matrix_uniform]),
             );
 
-            let mut light_depth_render_pass =
-                encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut depth_encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Depth Encoder"),
+                });
+
+            {
+                let mut light_depth_render_pass =
+                depth_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Light Depth Render Pass"),
                     color_attachments: &[],
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
@@ -477,17 +504,30 @@ impl State {
                     }),
                 });
 
-            light_depth_render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-            light_depth_render_pass.set_pipeline(&self.light_depth_pass.pipeline);
-            // TODO separate func
-            light_depth_render_pass.draw_model_instanced(
-                &self.model,
-                0..self.instances.len() as u32,
-                &self.camera_bind_group,
-                &self.light_bind_group,
-            );
+                light_depth_render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+                light_depth_render_pass.set_pipeline(&self.light_depth_pass.pipeline);
+                // TODO separate func
+                light_depth_render_pass.draw_model_instanced(
+                    &self.model,
+                    0..self.instances.len() as u32,
+                    &self.camera_bind_group,
+                    &self.light_bind_group,
+                );
+            }
+
+            self.queue.submit(std::iter::once(depth_encoder.finish()));
         }
-        encoder.pop_debug_group();
+
+        // render geometry
+        let surface_texture = self.surface.get_current_texture()?;
+        let surface_view = surface_texture
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
 
         encoder.push_debug_group("geometry pass");
         {
