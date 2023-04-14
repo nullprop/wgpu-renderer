@@ -12,10 +12,12 @@ struct Light {
     position: vec3<f32>,
     color: vec4<f32>,
     matrices: array<mat4x4<f32>, 6>,
-    active_matrix: u32,
 }
 @group(1) @binding(0)
 var<uniform> light: Light;
+
+@group(1) @binding(1)
+var<uniform> light_matrix_index: u32;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
@@ -46,7 +48,7 @@ struct VertexOutput {
 
 // Fragment shader
 
-@group(1)@binding(1)
+@group(1)@binding(2)
 var t_light_depth: binding_array<texture_depth_2d>;
-@group(1) @binding(2)
+@group(1) @binding(3)
 var s_light_depth: binding_array<sampler_comparison>;
