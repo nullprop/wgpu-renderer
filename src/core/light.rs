@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use super::model::{Mesh, Model};
+use super::{model::{Mesh, Model}, camera::{NEAR_PLANE, FAR_PLANE}};
 
 use cgmath::{Matrix4, Vector3};
 
@@ -15,7 +15,7 @@ pub struct LightUniform {
 
 impl LightUniform {
     pub fn new(position: [f32; 3], color: [f32; 4]) -> Self {
-        let proj = cgmath::perspective(cgmath::Deg(90.0), 1.0, 0.1, 1000.0);
+        let proj = cgmath::perspective(cgmath::Deg(90.0), 1.0, NEAR_PLANE, FAR_PLANE);
         #[rustfmt::skip]
         let matrices: [[[f32; 4]; 4]; 6] = [
             (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 1.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0))).into(),

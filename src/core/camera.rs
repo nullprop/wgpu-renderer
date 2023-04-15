@@ -3,6 +3,9 @@ use std::time::Duration;
 use cgmath::num_traits::clamp;
 use winit::{dpi::PhysicalPosition, event::*};
 
+pub const NEAR_PLANE: f32 = 0.1;
+pub const FAR_PLANE: f32 = 3000.0;
+
 pub struct Camera {
     pub position: cgmath::Point3<f32>,
     pub pitch: f32,
@@ -42,8 +45,8 @@ impl Camera {
             projection: PerspectiveProjection {
                 aspect,
                 fovy,
-                znear: 0.1,
-                zfar: 3000.0,
+                znear: NEAR_PLANE,
+                zfar: FAR_PLANE,
             },
         }
     }
