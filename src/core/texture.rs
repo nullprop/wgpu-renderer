@@ -16,6 +16,7 @@ impl Texture {
         label: &str,
         compare: Option<wgpu::CompareFunction>,
         layers: u32,
+        usage: wgpu::TextureUsages,
     ) -> Self {
         let size = wgpu::Extent3d {
             width: config.width,
@@ -29,7 +30,7 @@ impl Texture {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: Self::DEPTH_FORMAT,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            usage,
             view_formats: &[],
         };
         let texture = device.create_texture(&desc);
