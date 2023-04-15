@@ -47,9 +47,9 @@ fn vs_main(
 // Fragment shader
 
 @group(2)@binding(0)
-var t_light_depth: binding_array<texture_depth_2d>;
+var t_light_depth: texture_depth_2d_array;
 @group(2) @binding(1)
-var s_light_depth: binding_array<sampler_comparison>;
+var s_light_depth: sampler_comparison;
 
 @group(3) @binding(0)
 var t_diffuse: texture_2d<f32>;
@@ -76,9 +76,10 @@ fn sample_direct_light(index: i32, light_coords: vec4<f32>) -> f32 {
     let light_local = light_coords.xy * flip_correction * proj_correction + vec2<f32>(0.5, 0.5);
 
     return textureSampleCompareLevel(
-        t_light_depth[index],
-        s_light_depth[index],
+        t_light_depth,
+        s_light_depth,
         light_local,
+        index,
         light_coords.z * proj_correction
     );
 }
