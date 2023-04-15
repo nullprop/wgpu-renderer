@@ -138,7 +138,7 @@ impl State {
             &device,
             &config,
             "depth_texture",
-            Some(wgpu::CompareFunction::Less),
+            Some(wgpu::CompareFunction::LessEqual),
             1,
             wgpu::TextureUsages::RENDER_ATTACHMENT,
         );
@@ -147,7 +147,7 @@ impl State {
             &device,
             &config,
             "light_depth_texture",
-            Some(wgpu::CompareFunction::Less),
+            Some(wgpu::CompareFunction::LessEqual),
             6,
             wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
         );
@@ -446,7 +446,7 @@ impl State {
                 &self.device,
                 &self.config,
                 "depth_texture",
-                Some(wgpu::CompareFunction::Less),
+                Some(wgpu::CompareFunction::LessEqual),
                 1,
                 wgpu::TextureUsages::RENDER_ATTACHMENT,
             );
@@ -456,7 +456,7 @@ impl State {
                 &self.device,
                 &self.config,
                 "light_depth_texture",
-                Some(wgpu::CompareFunction::Less),
+                Some(wgpu::CompareFunction::LessEqual),
                 6,
                 wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             );
