@@ -46,24 +46,29 @@ fn vs_main(
 
 // Fragment shader
 
-@group(2) @binding(0)
+@group(2)@binding(0)
+var t_light_depth: binding_array<texture_depth_2d>;
+@group(2) @binding(1)
+var s_light_depth: binding_array<sampler_comparison>;
+
+@group(3) @binding(0)
 var t_diffuse: texture_2d<f32>;
-@group(2)@binding(1)
+@group(3)@binding(1)
 var s_diffuse: sampler;
 
-@group(2)@binding(2)
+@group(3)@binding(2)
 var t_normal: texture_2d<f32>;
-@group(2) @binding(3)
+@group(3) @binding(3)
 var s_normal: sampler;
 
-@group(2)@binding(4)
+@group(3)@binding(4)
 var t_roughness_metalness: texture_2d<f32>;
-@group(2) @binding(5)
+@group(3) @binding(5)
 var s_roughness_metalness: sampler;
 
 fn sample_direct_light(index: i32, light_coords: vec4<f32>) -> f32 {
     if (light_coords.w <= 0.0) {
-        return 1.0;
+        return 0.0;
     }
 
     let flip_correction = vec2<f32>(0.5, -0.5);

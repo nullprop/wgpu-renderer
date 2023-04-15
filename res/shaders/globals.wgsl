@@ -45,10 +45,3 @@ struct VertexOutput {
     @location(3) tangent_view_position: vec3<f32>,
     @location(4) world_position: vec4<f32>,
 }
-
-// Fragment shader
-
-@group(1)@binding(2)
-var t_light_depth: binding_array<texture_depth_2d>;
-@group(1) @binding(3)
-var s_light_depth: binding_array<sampler_comparison>;
