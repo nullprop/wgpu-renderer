@@ -100,7 +100,7 @@ fn fs_main(vert: VertexOutput) -> @location(0) vec4<f32> {
 
     var in_light = 0.0;
     for (var i: i32 = 0; i < 6; i++) {
-        in_light = sample_direct_light(i, light.matrices[i] * vert.world_position);
+        in_light = sample_direct_light(i, light.matrices[i] * (vert.world_position - vec4<f32>(light.position, 0.0)));
         if (in_light > 0.0) {
             break;
         }
