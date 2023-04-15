@@ -561,7 +561,6 @@ impl State {
 
                 light_depth_render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
                 light_depth_render_pass.set_pipeline(&self.light_depth_pass.pipeline);
-                // TODO separate func
                 light_depth_render_pass.draw_model_instanced(
                     &self.model,
                     0..self.instances.len() as u32,
