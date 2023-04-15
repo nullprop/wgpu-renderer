@@ -138,7 +138,7 @@ impl State {
             &device,
             &config,
             "depth_texture",
-            Some(wgpu::CompareFunction::LessEqual),
+            Some(wgpu::CompareFunction::Less),
             1,
             wgpu::TextureUsages::RENDER_ATTACHMENT,
         );
@@ -373,6 +373,7 @@ impl State {
             Some(Texture::DEPTH_FORMAT),
             &[ModelVertex::desc(), InstanceRaw::desc()],
             "light depth pass",
+            true,
         );
 
         let geometry_pass = RenderPass::new(
@@ -389,6 +390,7 @@ impl State {
             Some(Texture::DEPTH_FORMAT),
             &[ModelVertex::desc(), InstanceRaw::desc()],
             "geometry pass",
+            false,
         );
 
         let light_debug_pass = RenderPass::new(
@@ -400,6 +402,7 @@ impl State {
             Some(Texture::DEPTH_FORMAT),
             &[ModelVertex::desc()],
             "light debug pass",
+            false,
         );
 
         Self {
@@ -446,7 +449,7 @@ impl State {
                 &self.device,
                 &self.config,
                 "depth_texture",
-                Some(wgpu::CompareFunction::LessEqual),
+                Some(wgpu::CompareFunction::Less),
                 1,
                 wgpu::TextureUsages::RENDER_ATTACHMENT,
             );
