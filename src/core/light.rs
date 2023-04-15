@@ -11,7 +11,6 @@ pub struct LightUniform {
     _padding: u32,
     pub color: [f32; 4],
     pub matrices: [[[f32; 4]; 4]; 6],
-    _padding2: [u32; 3],
 }
 
 impl LightUniform {
@@ -32,7 +31,6 @@ impl LightUniform {
             _padding: 0,
             color,
             matrices: matrices,
-            _padding2: [0, 0, 0]
         }
     }
 }
