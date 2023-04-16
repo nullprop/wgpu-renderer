@@ -137,7 +137,7 @@ fn fs_main(vert: VertexOutput) -> @location(0) vec4<f32> {
     }
 
     // ambient
-    let ambient_strength = 0.01;
+    let ambient_strength = 0.02;
     let ambient_color = ambient_strength * albedo;
 
     var result = ambient_color + total_radiance;
