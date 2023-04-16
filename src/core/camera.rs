@@ -3,7 +3,7 @@ use std::time::Duration;
 use cgmath::num_traits::clamp;
 use winit::{dpi::PhysicalPosition, event::*};
 
-pub const NEAR_PLANE: f32 = 0.1;
+pub const NEAR_PLANE: f32 = 1.0;
 pub const FAR_PLANE: f32 = 3000.0;
 
 pub struct Camera {
