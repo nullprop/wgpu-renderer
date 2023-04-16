@@ -1,6 +1,9 @@
 use std::ops::Range;
 
-use super::{model::{Mesh, Model}, camera::{NEAR_PLANE, FAR_PLANE}};
+use super::{
+    camera::{FAR_PLANE, NEAR_PLANE},
+    model::{Mesh, Model},
+};
 
 use cgmath::{Matrix4, Vector3};
 
@@ -18,12 +21,12 @@ impl LightUniform {
         let proj = cgmath::perspective(cgmath::Deg(90.0), 1.0, NEAR_PLANE, FAR_PLANE);
         #[rustfmt::skip]
         let matrices: [[[f32; 4]; 4]; 6] = [
-            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 1.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0))).into(),
-            (proj * Matrix4::look_to_rh(position.into(), Vector3::new(-1.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0))).into(),
-            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0, 1.0, 0.0), Vector3::new(1.0, 0.0, 0.0))).into(),
-            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0,-1.0, 0.0), Vector3::new(-1.0, 0.0, 0.0))).into(),
-            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0, 0.0, 1.0), Vector3::new(0.0, 1.0, 0.0))).into(),
-            (proj * Matrix4::look_to_rh(position.into(), Vector3::new( 0.0, 0.0,-1.0), Vector3::new(0.0, 1.0, 0.0))).into(),
+            (proj * Matrix4::look_to_rh(position.into(),  Vector3::unit_x(),  Vector3::unit_y())).into(),
+            (proj * Matrix4::look_to_rh(position.into(), -Vector3::unit_x(),  Vector3::unit_y())).into(),
+            (proj * Matrix4::look_to_rh(position.into(),  Vector3::unit_y(),  Vector3::unit_x())).into(),
+            (proj * Matrix4::look_to_rh(position.into(), -Vector3::unit_y(), -Vector3::unit_x())).into(),
+            (proj * Matrix4::look_to_rh(position.into(),  Vector3::unit_z(),  Vector3::unit_y())).into(),
+            (proj * Matrix4::look_to_rh(position.into(), -Vector3::unit_z(),  Vector3::unit_y())).into(),
         ];
 
         Self {
