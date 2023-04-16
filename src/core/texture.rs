@@ -12,15 +12,16 @@ impl Texture {
 
     pub fn create_depth_texture(
         device: &wgpu::Device,
-        config: &wgpu::SurfaceConfiguration,
         label: &str,
         compare: Option<wgpu::CompareFunction>,
+        width: u32,
+        height: u32,
         layers: u32,
         usage: wgpu::TextureUsages,
     ) -> Self {
         let size = wgpu::Extent3d {
-            width: config.width,
-            height: config.height,
+            width: width,
+            height: height,
             depth_or_array_layers: layers,
         };
         let desc = wgpu::TextureDescriptor {

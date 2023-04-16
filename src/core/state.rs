@@ -15,6 +15,9 @@ use super::pass::RenderPass;
 use super::resources;
 use super::texture::Texture;
 
+const SHADOW_MAP_SIZE: u32 = 1024;
+const SHADOW_MAP_LAYERS: u32 = 6;
+
 pub struct State {
     pub size: winit::dpi::PhysicalSize<u32>,
 
@@ -38,10 +41,8 @@ pub struct State {
     light_debug_pass: RenderPass,
     light_bind_group: wgpu::BindGroup,
     light_depth_bind_group: wgpu::BindGroup,
-    light_depth_bind_group_layout: wgpu::BindGroupLayout,
     light_depth_pass: RenderPass,
-    light_depth_texture: Texture,
-    light_depth_texture_target_views: [TextureView; 6],
+    light_depth_texture_target_views: [TextureView; SHADOW_MAP_LAYERS as usize],
     light_matrix_uniform: u32,
     light_matrix_buffer: wgpu::Buffer,
 }
@@ -136,23 +137,25 @@ impl State {
 
         let depth_texture = Texture::create_depth_texture(
             &device,
-            &config,
             "depth_texture",
             Some(wgpu::CompareFunction::Less),
+            config.width,
+            config.height,
             1,
             wgpu::TextureUsages::RENDER_ATTACHMENT,
         );
 
         let light_depth_texture = Texture::create_depth_texture(
             &device,
-            &config,
             "light_depth_texture",
             Some(wgpu::CompareFunction::LessEqual),
-            6,
+            SHADOW_MAP_SIZE,
+            SHADOW_MAP_SIZE,
+            SHADOW_MAP_LAYERS,
             wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
         );
 
-        let light_depth_texture_target_views = (0..6)
+        let light_depth_texture_target_views = (0..SHADOW_MAP_LAYERS)
             .map(|i| {
                 light_depth_texture.texture.create_view(&TextureViewDescriptor {
                     label: Some("light_depth_texture_view"),
@@ -169,7 +172,7 @@ impl State {
             .try_into()
             .expect("failed to create light depth texture views");
 
-        let light_uniform = LightUniform::new([100.0, 60.0, 0.0], [1.0, 1.0, 1.0, 200000.0]);
+        let light_uniform = LightUniform::new([100.0, 150.0, 0.0], [1.0, 1.0, 1.0, 200000.0]);
 
         // We'll want to update our lights position, so we use COPY_DST
         let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -426,10 +429,8 @@ impl State {
             light_buffer,
             light_debug_pass,
             light_bind_group,
-            light_depth_bind_group,         
-            light_depth_bind_group_layout,         
+            light_depth_bind_group,
             light_depth_pass,
-            light_depth_texture,
             light_depth_texture_target_views,
             light_matrix_uniform,
             light_matrix_buffer,
@@ -447,55 +448,13 @@ impl State {
                 .resize(new_size.width, new_size.height);
             self.depth_texture = Texture::create_depth_texture(
                 &self.device,
-                &self.config,
                 "depth_texture",
                 Some(wgpu::CompareFunction::Less),
+                self.config.width,
+                self.config.height,
                 1,
                 wgpu::TextureUsages::RENDER_ATTACHMENT,
             );
-
-            // recreate light depth textures
-            self.light_depth_texture = Texture::create_depth_texture(
-                &self.device,
-                &self.config,
-                "light_depth_texture",
-                Some(wgpu::CompareFunction::LessEqual),
-                6,
-                wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-            );
-
-            self.light_depth_texture_target_views = (0..6)
-                .map(|i| {
-                    self.light_depth_texture.texture.create_view(&TextureViewDescriptor {
-                        label: Some("light_depth_texture_view"),
-                        format: None,
-                        dimension: Some(wgpu::TextureViewDimension::D2),
-                        aspect: wgpu::TextureAspect::All,
-                        base_mip_level: 0,
-                        mip_level_count: None,
-                        base_array_layer: i as u32,
-                        array_layer_count: NonZeroU32::new(1),
-                    })
-                })
-                .collect::<Vec<_>>()
-                .try_into()
-                .expect("failed to create light depth texture views");
-
-            self.light_depth_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &self.light_depth_bind_group_layout,
-                entries: &[
-                    // depth textures
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&self.light_depth_texture.view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&self.light_depth_texture.sampler),
-                    },
-                ],
-                label: Some("Light Depth Bind Group"),
-            });
         }
     }
 
@@ -534,7 +493,7 @@ impl State {
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
 
         // render light to depth textures
-        for i in 0..6 {
+        for i in 0..SHADOW_MAP_LAYERS as usize {
             self.light_matrix_uniform = i as u32;
             self.queue.write_buffer(
                 &self.light_matrix_buffer,
