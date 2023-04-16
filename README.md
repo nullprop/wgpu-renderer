@@ -28,6 +28,7 @@ Controls:
 
 TODO:
 - Shadow mapping
+- Transparency
 - Restructuring
     - Simplify/abstract renderpasses; will be nice to have for PP and GI
     - `src/core/state.rs` is a mess; separate input handling, pipeline, passes
