@@ -2,11 +2,12 @@ use cgmath::prelude::*;
 use wgpu::{InstanceDescriptor, Backends, TextureView, TextureViewDescriptor, StoreOp};
 use std::default::Default;
 use std::mem;
-use std::num::NonZeroU32;
 use std::time::Duration;
 
 use wgpu::util::DeviceExt;
 use winit::{event::*, window::Window};
+use winit::dpi::PhysicalSize;
+use crate::core::light::LightMatrixUniform;
 
 use super::camera::{Camera, CameraController, CameraUniform};
 use super::instance::{Instance, InstanceRaw};
@@ -44,14 +45,17 @@ pub struct State {
     light_depth_bind_group: wgpu::BindGroup,
     light_depth_pass: RenderPass,
     light_depth_texture_target_views: [TextureView; SHADOW_MAP_LAYERS as usize],
-    light_matrix_uniform: u32,
+    light_matrix_uniform: LightMatrixUniform,
     light_matrix_buffer: wgpu::Buffer,
 }
 
 impl State {
     // Creating some of the wgpu types requires async code
     pub async fn new(window: &Window) -> Self {
-        let size = window.inner_size();
+        log::info!("Creating surface");
+        let mut size = window.inner_size();
+        size.width = size.width.max(1);
+        size.height = size.height.max(1);
         let instance = wgpu::Instance::new(InstanceDescriptor { backends: Backends::all(), ..Default::default() });
         let surface = unsafe { instance.create_surface(window) }.unwrap();
 
@@ -64,7 +68,6 @@ impl State {
             .await
             .expect("failed to get adapter");
 
-        // TODO: some feature here doesn't work on WASM
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -111,6 +114,7 @@ impl State {
             contents: bytemuck::cast_slice(&[camera_uniform]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
+        let camera_uniform_size = mem::size_of::<CameraUniform>() as u64;
         let camera_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[wgpu::BindGroupLayoutEntry {
@@ -119,7 +123,7 @@ impl State {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: None,
+                        min_binding_size: wgpu::BufferSize::new(camera_uniform_size),
                     },
                     count: None,
                 }],
@@ -182,7 +186,7 @@ impl State {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let light_matrix_uniform = 0;
+        let light_matrix_uniform = LightMatrixUniform::default();
         let light_matrix_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Light Matrix UB"),
             contents: bytemuck::cast_slice(&[light_matrix_uniform]),
@@ -190,7 +194,7 @@ impl State {
         });
 
         let light_uniform_size = mem::size_of::<LightUniform>() as u64;
-        let light_matrix_uniform_size = mem::size_of::<u32>() as u64;
+        let light_matrix_uniform_size = mem::size_of::<LightMatrixUniform>() as u64;
         let light_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
@@ -502,7 +506,7 @@ impl State {
 
         // render light to depth textures
         for i in 0..SHADOW_MAP_LAYERS as usize {
-            self.light_matrix_uniform = i as u32;
+            self.light_matrix_uniform.value = i as u32;
             self.queue.write_buffer(
                 &self.light_matrix_buffer,
                 0,
