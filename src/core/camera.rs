@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use cgmath::num_traits::clamp;
 use winit::{dpi::PhysicalPosition, event::*};
+use winit::keyboard::{PhysicalKey, KeyCode};
 
 pub const NEAR_PLANE: f32 = 1.0;
 pub const FAR_PLANE: f32 = 3000.0;
@@ -175,38 +176,32 @@ impl CameraController {
             None => false,
             Some(event) => match event {
                 WindowEvent::KeyboardInput {
-                    input:
-                        KeyboardInput {
-                            state,
-                            virtual_keycode: Some(keycode),
-                            ..
-                        },
+                    event: key_event,
                     ..
                 } => {
-                    let is_pressed = *state == ElementState::Pressed;
-                    let amount = if is_pressed { 1.0 } else { 0.0 };
-                    match keycode {
-                        VirtualKeyCode::W | VirtualKeyCode::Up => {
+                    let amount = if key_event.state == ElementState::Pressed { 1.0 } else { 0.0 };
+                    match key_event.physical_key {
+                        PhysicalKey::Code(KeyCode::KeyW) | PhysicalKey::Code(KeyCode::ArrowUp) => {
                             self.move_forward = amount;
                             true
                         }
-                        VirtualKeyCode::A | VirtualKeyCode::Left => {
+                        PhysicalKey::Code(KeyCode::KeyA) | PhysicalKey::Code(KeyCode::ArrowLeft) => {
                             self.move_left = amount;
                             true
                         }
-                        VirtualKeyCode::S | VirtualKeyCode::Down => {
+                        PhysicalKey::Code(KeyCode::KeyS) | PhysicalKey::Code(KeyCode::ArrowDown) => {
                             self.move_backward = amount;
                             true
                         }
-                        VirtualKeyCode::D | VirtualKeyCode::Right => {
+                        PhysicalKey::Code(KeyCode::KeyD) | PhysicalKey::Code(KeyCode::ArrowRight) => {
                             self.move_right = amount;
                             true
                         }
-                        VirtualKeyCode::Space => {
+                        PhysicalKey::Code(KeyCode::Space) => {
                             self.move_up = amount;
                             true
                         }
-                        VirtualKeyCode::LControl => {
+                        PhysicalKey::Code(KeyCode::ControlLeft) => {
                             self.move_down = amount;
                             true
                         }

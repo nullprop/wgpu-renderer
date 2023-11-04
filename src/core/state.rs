@@ -1,5 +1,5 @@
 use cgmath::prelude::*;
-use wgpu::{InstanceDescriptor, Backends, TextureView, TextureViewDescriptor};
+use wgpu::{InstanceDescriptor, Backends, TextureView, TextureViewDescriptor, StoreOp};
 use std::default::Default;
 use std::num::NonZeroU32;
 use std::time::Duration;
@@ -52,7 +52,7 @@ impl State {
     pub async fn new(window: &Window) -> Self {
         let size = window.inner_size();
         let instance = wgpu::Instance::new(InstanceDescriptor { backends: Backends::all(), ..Default::default() });
-        let surface = unsafe { instance.create_surface(window).unwrap() };
+        let surface = unsafe { instance.create_surface(window) }.unwrap();
 
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -61,12 +61,13 @@ impl State {
                 force_fallback_adapter: false,
             })
             .await
-            .unwrap();
+            .expect("failed to get adapter");
 
+        // TODO: some feature here doesn't work on WASM
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::TEXTURE_BINDING_ARRAY 
+                    features: wgpu::Features::TEXTURE_BINDING_ARRAY
                         | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
                     limits: if cfg!(target_arch = "wasm32") {
                         wgpu::Limits::downlevel_webgl2_defaults()
@@ -78,7 +79,7 @@ impl State {
                 None, // Trace path
             )
             .await
-            .unwrap();
+            .expect("failed to get device");
 
         let caps = surface.get_capabilities(&adapter);
         let config = wgpu::SurfaceConfiguration {
@@ -165,7 +166,7 @@ impl State {
                     base_mip_level: 0,
                     mip_level_count: None,
                     base_array_layer: i as u32,
-                    array_layer_count: NonZeroU32::new(1),
+                    array_layer_count: Some(1),
                 })
             })
             .collect::<Vec<_>>()
@@ -340,8 +341,8 @@ impl State {
             &queue,
             &texture_bind_group_layout,
         )
-        .await
-        .unwrap();
+            .await
+            .unwrap();
 
         let light_model = resources::load_model_gltf(
             "models/Cube.glb",
@@ -349,8 +350,8 @@ impl State {
             &queue,
             &texture_bind_group_layout,
         )
-        .await
-        .unwrap();
+            .await
+            .unwrap();
 
         let instances = vec![Instance {
             position: [0.0, 0.0, 0.0].into(),
@@ -509,18 +510,20 @@ impl State {
 
             {
                 let mut light_depth_render_pass =
-                depth_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("Light Depth Render Pass"),
-                    color_attachments: &[],
-                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &self.light_depth_texture_target_views[i],
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(1.0),
-                            store: true,
+                    depth_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Light Depth Render Pass"),
+                        color_attachments: &[],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: &self.light_depth_texture_target_views[i],
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(1.0),
+                                store: StoreOp::Store,
+                            }),
+                            stencil_ops: None,
                         }),
-                        stencil_ops: None,
-                    }),
-                });
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
+                    });
 
                 light_depth_render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
                 light_depth_render_pass.set_pipeline(&self.light_depth_pass.pipeline);
@@ -559,17 +562,19 @@ impl State {
                             b: 0.0,
                             a: 1.0,
                         }),
-                        store: true,
+                        store: StoreOp::Store,
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &self.depth_texture.view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
-                        store: true,
+                        store: StoreOp::Store,
                     }),
                     stencil_ops: None,
                 }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
             });
 
             geom_render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
@@ -592,17 +597,19 @@ impl State {
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Load,
-                            store: true,
+                            store: StoreOp::Store,
                         },
                     })],
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                         view: &self.depth_texture.view,
                         depth_ops: Some(wgpu::Operations {
                             load: wgpu::LoadOp::Load,
-                            store: true,
+                            store: StoreOp::Store,
                         }),
                         stencil_ops: None,
                     }),
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
                 });
 
             light_debug_render_pass.set_pipeline(&self.light_debug_pass.pipeline);
