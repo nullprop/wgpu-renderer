@@ -1,6 +1,7 @@
 use cgmath::prelude::*;
 use wgpu::{InstanceDescriptor, Backends, TextureView, TextureViewDescriptor, StoreOp};
 use std::default::Default;
+use std::mem;
 use std::num::NonZeroU32;
 use std::time::Duration;
 
@@ -67,8 +68,7 @@ impl State {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::TEXTURE_BINDING_ARRAY
-                        | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
+                    features: wgpu::Features::default(),
                     limits: if cfg!(target_arch = "wasm32") {
                         wgpu::Limits::downlevel_webgl2_defaults()
                     } else {
@@ -189,6 +189,8 @@ impl State {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
+        let light_uniform_size = mem::size_of::<LightUniform>() as u64;
+        let light_matrix_uniform_size = mem::size_of::<u32>() as u64;
         let light_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
@@ -199,7 +201,7 @@ impl State {
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
-                            min_binding_size: None,
+                            min_binding_size: wgpu::BufferSize::new(light_uniform_size),
                         },
                         count: None,
                     },
@@ -210,7 +212,7 @@ impl State {
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
-                            min_binding_size: None,
+                            min_binding_size: wgpu::BufferSize::new(light_matrix_uniform_size),
                         },
                         count: None,
                     },
@@ -247,16 +249,16 @@ impl State {
                             view_dimension: wgpu::TextureViewDimension::D2Array,
                             sample_type: wgpu::TextureSampleType::Depth,
                         },
-                        count: NonZeroU32::new(1),
+                        count: None,
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
-                        count: NonZeroU32::new(1),
+                        count: None,
                     },
                 ],
-                label: Some("Light Bind Group Layout"),
+                label: Some("Light Depth Bind Group Layout"),
             });
 
         let light_depth_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
