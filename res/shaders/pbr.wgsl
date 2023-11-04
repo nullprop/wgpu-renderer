@@ -87,13 +87,13 @@ fn sample_direct_light(index: i32, light_coords: vec4<f32>) -> f32 {
         if (phase == 2 || phase == 3) {
             offset.y = -offset.y;
         }
-        let s = textureSampleCompareLevel(
-             t_light_depth,
-             s_light_depth,
-             light_local + offset,
-             index,
-             reference_depth
-         );
+        let s = textureSampleCompare(
+            t_light_depth,
+            s_light_depth,
+            light_local + offset,
+            index,
+            reference_depth
+        );
         total_sample += s * INV_SHADOW_SAMPLES;
     }
 
