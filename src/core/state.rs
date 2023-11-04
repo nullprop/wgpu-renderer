@@ -173,7 +173,7 @@ impl State {
             .try_into()
             .expect("failed to create light depth texture views");
 
-        let light_uniform = LightUniform::new([100.0, 150.0, 0.0], [1.0, 1.0, 1.0, 200000.0]);
+        let light_uniform = LightUniform::new([0.0, 0.0, 0.0], [1.0, 1.0, 1.0, 250000.0]);
 
         // We'll want to update our lights position, so we use COPY_DST
         let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -468,7 +468,7 @@ impl State {
             .process_events(window_event, device_event)
     }
 
-    pub fn update(&mut self, dt: Duration) {
+    pub fn update(&mut self, dt: Duration, time: Duration) {
         // Update camera
         self.camera.update(dt, &self.camera_controller);
         self.camera_controller.reset(false);
@@ -480,11 +480,15 @@ impl State {
         );
 
         // Update the light
-        let old_position: cgmath::Vector3<_> = self.light_uniform.position.into();
-        self.light_uniform.position =
-            (cgmath::Quaternion::from_angle_y(cgmath::Deg(90.0 * dt.as_secs_f32())) * old_position)
-                .into();
+        self.light_uniform.position[0] = f32::sin(time.as_secs_f32() * 0.5) * 500.0;
+        self.light_uniform.position[1] = 300.0 + f32::sin(time.as_secs_f32() * 0.3) * 150.0;
+        self.light_uniform.position[2] = f32::sin(time.as_secs_f32() * 0.8) * 100.0;
         self.light_uniform.update_matrices();
+
+        self.light_uniform.color[0] = f32::abs(f32::sin(time.as_secs_f32() * 1.0));
+        self.light_uniform.color[1] = f32::abs(f32::sin(time.as_secs_f32() * 0.6));
+        self.light_uniform.color[2] = f32::abs(f32::sin(time.as_secs_f32() * 0.4));
+
         self.queue.write_buffer(
             &self.light_buffer,
             0,

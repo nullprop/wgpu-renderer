@@ -44,6 +44,7 @@ pub async fn run() {
 
     let mut state = State::new(&window).await;
     let mut last_render = instant::Instant::now();
+    let start_time = instant::Instant::now();
     let mut is_focused = true;
 
     // Event loop
@@ -57,9 +58,10 @@ pub async fn run() {
             if window_id == window.id() => {
                 let now = instant::Instant::now();
                 let dt = now - last_render;
+                let time = now - start_time;
                 last_render = now;
                 if is_focused {
-                    state.update(dt);
+                    state.update(dt, time);
                     match state.render() {
                         Ok(_) => {
                             window.request_redraw();
