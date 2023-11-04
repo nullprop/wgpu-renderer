@@ -82,6 +82,31 @@ fn sample_direct_light(index: i32, light_coords: vec4<f32>) -> f32 {
         index,
         light_coords.z * proj_correction
     );
+
+    /*
+    var coords = light_coords;
+
+    // correct projection
+    coords.x /= coords.w;
+    coords.y /= coords.w;
+    coords.z /= coords.w;
+
+    // flip correction
+    coords.x *= 0.5;
+    coords.y *= -0.5;
+
+    // map to [0,1] range
+    coords.x += 0.5;
+    coords.y += 0.5;
+
+    return textureSampleCompareLevel(
+        t_light_depth,
+        s_light_depth,
+        coords.xy,
+        index,
+        coords.z
+    );
+    */
 }
 
 @fragment
@@ -100,8 +125,8 @@ fn fs_main(vert: VertexOutput) -> @location(0) vec4<f32> {
     var total_radiance: vec3<f32>;
 
     var in_light = 0.0;
-    for (var i: i32 = 0; i < 6; i++) {
-        in_light = sample_direct_light(i, light.matrices[i] * (vert.world_position - vec4<f32>(light.position, 0.0)));
+    for (var i: i32 = 0; i < 1; i++) {
+        in_light = sample_direct_light(i, light.matrices[i] * vert.world_position);
         if (in_light > 0.0) {
             break;
         }
