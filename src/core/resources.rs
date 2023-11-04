@@ -114,7 +114,7 @@ pub async fn load_model_gltf(
                 // Average the tangents/bitangents
                 for (i, n) in triangles_included.into_iter().enumerate() {
                     let denom = 1.0 / n as f32;
-                    let mut v = &mut vertices[i];
+                    let v = &mut vertices[i];
                     v.tangent = (cgmath::Vector3::from(v.tangent) * denom).into();
                     v.bitangent = (cgmath::Vector3::from(v.bitangent) * denom).into();
                 }
@@ -276,12 +276,12 @@ fn gltf_image_format_to_wgpu(format: gltf::image::Format, srgb: bool) -> wgpu::T
             gltf::image::Format::R8G8 => panic!(),
             gltf::image::Format::R8G8B8 => wgpu::TextureFormat::Rgba8UnormSrgb, // converted
             gltf::image::Format::R8G8B8A8 => wgpu::TextureFormat::Rgba8UnormSrgb,
-            gltf::image::Format::B8G8R8 => wgpu::TextureFormat::Bgra8UnormSrgb,
-            gltf::image::Format::B8G8R8A8 => wgpu::TextureFormat::Bgra8UnormSrgb,
             gltf::image::Format::R16 => panic!(),
             gltf::image::Format::R16G16 => panic!(),
             gltf::image::Format::R16G16B16 => panic!(), // converted
             gltf::image::Format::R16G16B16A16 => panic!(),
+            gltf::image::Format::R32G32B32FLOAT => panic!(),
+            gltf::image::Format::R32G32B32A32FLOAT => panic!(),
         };
     }
 
@@ -290,12 +290,12 @@ fn gltf_image_format_to_wgpu(format: gltf::image::Format, srgb: bool) -> wgpu::T
         gltf::image::Format::R8G8 => wgpu::TextureFormat::Rg8Unorm,
         gltf::image::Format::R8G8B8 => wgpu::TextureFormat::Rgba8Unorm, // converted
         gltf::image::Format::R8G8B8A8 => wgpu::TextureFormat::Rgba8Unorm,
-        gltf::image::Format::B8G8R8 => wgpu::TextureFormat::Bgra8Unorm,
-        gltf::image::Format::B8G8R8A8 => wgpu::TextureFormat::Bgra8Unorm,
         gltf::image::Format::R16 => wgpu::TextureFormat::R16Unorm,
         gltf::image::Format::R16G16 => wgpu::TextureFormat::Rg16Unorm,
         gltf::image::Format::R16G16B16 => wgpu::TextureFormat::Rgba16Unorm, // converted
         gltf::image::Format::R16G16B16A16 => wgpu::TextureFormat::Rgba16Unorm,
+        gltf::image::Format::R32G32B32FLOAT => wgpu::TextureFormat::Rgba32Float   ,
+        gltf::image::Format::R32G32B32A32FLOAT => wgpu::TextureFormat::Rgba32Float,
     }
 }
 
@@ -305,12 +305,12 @@ fn gltf_image_format_stride(format: gltf::image::Format) -> u32 {
         gltf::image::Format::R8G8 => 2,
         gltf::image::Format::R8G8B8 => 4, // converted
         gltf::image::Format::R8G8B8A8 => 4,
-        gltf::image::Format::B8G8R8 => 3,
-        gltf::image::Format::B8G8R8A8 => 4,
         gltf::image::Format::R16 => 2,
         gltf::image::Format::R16G16 => 4,
         gltf::image::Format::R16G16B16 => 8, // converted
         gltf::image::Format::R16G16B16A16 => 8,
+        gltf::image::Format::R32G32B32FLOAT => 12,
+        gltf::image::Format::R32G32B32A32FLOAT => 16,
     }
 }
 

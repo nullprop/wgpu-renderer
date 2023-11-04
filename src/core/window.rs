@@ -1,9 +1,10 @@
 use super::state::State;
 use winit::{
     event::*,
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::{EventLoop},
     window::WindowBuilder,
 };
+use winit::keyboard::{KeyCode, PhysicalKey};
 
 #[cfg(debug_assertions)]
 fn create_window(event_loop: &EventLoop<()>) -> winit::window::Window {
@@ -25,23 +26,17 @@ fn create_window(event_loop: &EventLoop<()>) -> winit::window::Window {
 }
 
 pub async fn run() {
-    let event_loop = EventLoop::new();
+    let event_loop = EventLoop::new().unwrap();
     let window = create_window(&event_loop);
 
     #[cfg(target_arch = "wasm32")]
     {
-        // Winit prevents sizing with CSS, so we have to set
-        // the size manually when on web.
-        // https://github.com/rust-windowing/winit/pull/2074
-        use winit::dpi::PhysicalSize;
-        window.set_inner_size(PhysicalSize::new(1920, 1080));
-
         use winit::platform::web::WindowExtWebSys;
         web_sys::window()
             .and_then(|win| win.document())
             .and_then(|doc| doc.body())
             .and_then(|body| {
-                let canvas = web_sys::Element::from(window.canvas());
+                let canvas = web_sys::Element::from(window.canvas().unwrap());
                 body.append_child(&canvas).ok()
             })
             .expect("Couldn't append canvas to document body.");
@@ -52,11 +47,39 @@ pub async fn run() {
     let mut is_focused = true;
 
     // Event loop
-    event_loop.run(move |event, _, control_flow| {
+    event_loop.run(move |event, window_target| {
         match event {
             Event::DeviceEvent { ref event, .. } => {
                 state.input(None, Some(event));
             }
+            // window render
+            Event::WindowEvent { window_id, event: WindowEvent::RedrawRequested }
+            if window_id == window.id() => {
+                let now = instant::Instant::now();
+                let dt = now - last_render;
+                last_render = now;
+                if is_focused {
+                    state.update(dt);
+                    match state.render() {
+                        Ok(_) => {
+                            window.request_redraw();
+                        }
+                        // Reconfigure the surface if lost
+                        Err(wgpu::SurfaceError::Lost) => {
+                            state.resize(state.size);
+                            window.request_redraw();
+                        }
+                        // The system is out of memory, we should probably quit
+                        Err(wgpu::SurfaceError::OutOfMemory) => window_target.exit(),
+                        // All other errors (Outdated, Timeout) should be resolved by the next frame
+                        Err(e) => {
+                            eprintln!("{:?}", e);
+                            window.request_redraw();
+                        }
+                    }
+                }
+            }
+            // misc window input
             Event::WindowEvent {
                 ref event,
                 window_id,
@@ -65,69 +88,48 @@ pub async fn run() {
                     match event {
                         WindowEvent::CloseRequested
                         | WindowEvent::KeyboardInput {
-                            input:
-                                KeyboardInput {
-                                    state: ElementState::Pressed,
-                                    virtual_keycode: Some(VirtualKeyCode::Escape),
-                                    ..
-                                },
+                            event: KeyEvent {
+                                state: ElementState::Pressed,
+                                physical_key: PhysicalKey::Code(KeyCode::Escape),
+                                ..
+                            },
                             ..
                         } => {
                             #[cfg(not(target_arch = "wasm32"))]
                             {
-                                *control_flow = ControlFlow::Exit;
+                                window_target.exit();
                             }
                         }
                         WindowEvent::Resized(physical_size) => {
                             state.resize(*physical_size);
-                        }
-                        WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                            state.resize(**new_inner_size);
+                            window.request_redraw();
                         }
                         WindowEvent::Focused(focused) => {
                             lock_cursor(&window, *focused);
                             is_focused = *focused;
+                            window.request_redraw();
                         }
                         _ => {}
                     }
                 }
             }
-            Event::RedrawRequested(window_id) if window_id == window.id() => {
-                let now = instant::Instant::now();
-                let dt = now - last_render;
-                last_render = now;
-                if is_focused {
-                    state.update(dt);
-                    match state.render() {
-                        Ok(_) => {}
-                        // Reconfigure the surface if lost
-                        Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
-                        // The system is out of memory, we should probably quit
-                        Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                        // All other errors (Outdated, Timeout) should be resolved by the next frame
-                        Err(e) => eprintln!("{:?}", e),
-                    }
-                }
-            }
-            Event::MainEventsCleared => {
-                // RedrawRequested will only trigger once, unless we manually
-                // request it.
-                window.request_redraw();
-            }
             _ => {}
         }
-    });
+    }).unwrap();
 }
 
 fn lock_cursor(window: &winit::window::Window, lock: bool) {
     if lock {
-        window
+        match window
             .set_cursor_grab(if cfg!(target_arch = "wasm32") {
                 winit::window::CursorGrabMode::Locked
             } else {
                 winit::window::CursorGrabMode::Confined
             })
-            .unwrap();
+        {
+            Err(e) => println!("Failed to grab cursor {e:?}"),
+            _ => ()
+        }
         window.set_cursor_visible(false);
     } else {
         window
