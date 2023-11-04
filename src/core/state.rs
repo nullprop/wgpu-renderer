@@ -484,6 +484,7 @@ impl State {
         self.light_uniform.position =
             (cgmath::Quaternion::from_angle_y(cgmath::Deg(90.0 * dt.as_secs_f32())) * old_position)
                 .into();
+        self.light_uniform.update_matrices();
         self.queue.write_buffer(
             &self.light_buffer,
             0,

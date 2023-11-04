@@ -8,7 +8,7 @@ use super::{
 use cgmath::{Matrix4, Vector3};
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Debug, Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct LightUniform {
     pub position: [f32; 3],
     _padding: u32,
@@ -18,23 +18,26 @@ pub struct LightUniform {
 
 impl LightUniform {
     pub fn new(position: [f32; 3], color: [f32; 4]) -> Self {
-        let proj = cgmath::perspective(cgmath::Deg(90.0), 1.0, NEAR_PLANE, FAR_PLANE);
-        #[rustfmt::skip]
-        let matrices: [[[f32; 4]; 4]; 6] = [
-            (proj * Matrix4::look_to_rh(position.into(),  Vector3::unit_x(),  Vector3::unit_y())).into(),
-            (proj * Matrix4::look_to_rh(position.into(), -Vector3::unit_x(),  Vector3::unit_y())).into(),
-            (proj * Matrix4::look_to_rh(position.into(),  Vector3::unit_y(),  Vector3::unit_x())).into(),
-            (proj * Matrix4::look_to_rh(position.into(), -Vector3::unit_y(), -Vector3::unit_x())).into(),
-            (proj * Matrix4::look_to_rh(position.into(),  Vector3::unit_z(),  Vector3::unit_y())).into(),
-            (proj * Matrix4::look_to_rh(position.into(), -Vector3::unit_z(),  Vector3::unit_y())).into(),
-        ];
-
-        Self {
+        let mut s = Self {
             position,
             _padding: 0,
             color,
-            matrices,
-        }
+            ..Default::default()
+        };
+        s.update_matrices();
+        s
+    }
+
+    pub fn update_matrices(&mut self) {
+        let proj = cgmath::perspective(cgmath::Deg(90.0), 1.0, NEAR_PLANE, FAR_PLANE);
+        self.matrices = [
+            (proj * Matrix4::look_to_rh(self.position.into(), Vector3::unit_x(), Vector3::unit_y())).into(), // forward
+            (proj * Matrix4::look_to_rh(self.position.into(), -Vector3::unit_x(), Vector3::unit_y())).into(), // back
+            (proj * Matrix4::look_to_rh(self.position.into(), Vector3::unit_y(), Vector3::unit_x())).into(), // up
+            (proj * Matrix4::look_to_rh(self.position.into(), -Vector3::unit_y(), -Vector3::unit_x())).into(), // down
+            (proj * Matrix4::look_to_rh(self.position.into(), Vector3::unit_z(), Vector3::unit_y())).into(), // right
+            (proj * Matrix4::look_to_rh(self.position.into(), -Vector3::unit_z(), Vector3::unit_y())).into(), // left
+        ];
     }
 }
 
@@ -71,8 +74,8 @@ pub trait DrawLight<'a> {
 }
 
 impl<'a, 'b> DrawLight<'b> for wgpu::RenderPass<'a>
-where
-    'b: 'a,
+    where
+        'b: 'a,
 {
     fn draw_light_mesh(
         &mut self,
