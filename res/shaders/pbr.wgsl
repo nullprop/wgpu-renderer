@@ -74,14 +74,29 @@ fn sample_direct_light(index: i32, light_coords: vec4<f32>) -> f32 {
     let flip_correction = vec2<f32>(0.5, -0.5);
     let proj_correction = 1.0 / light_coords.w;
     let light_local = light_coords.xy * flip_correction * proj_correction + vec2<f32>(0.5, 0.5);
+    let reference_depth = light_coords.z * proj_correction;
 
-    return textureSampleCompareLevel(
-        t_light_depth,
-        s_light_depth,
-        light_local,
-        index,
-        light_coords.z * proj_correction
-    );
+    var total_sample = 0.0;
+    for (var i: i32 = 0; i < SHADOW_SAMPLES; i++) {
+        let phase = i % 4;
+        var offset = vec2<f32>(f32(i / 4) * SHADOW_SAMPLE_DIST);
+        if (phase == 1 || phase == 3) {
+            offset.x = -offset.x;
+        }
+        if (phase == 2 || phase == 3) {
+            offset.y = -offset.y;
+        }
+        let s = textureSampleCompareLevel(
+             t_light_depth,
+             s_light_depth,
+             light_local + offset,
+             index,
+             reference_depth
+         );
+        total_sample += s * INV_SHADOW_SAMPLES;
+    }
+
+    return total_sample;
 }
 
 @fragment
@@ -118,6 +133,8 @@ fn fs_main(vert: VertexOutput) -> @location(0) vec4<f32> {
         }
 
         in_light = sample_direct_light(i, light_coords);
+        // TODO should break even if 0 since we're inside frustum.
+        // See if causes issues with bias overlap between directions.
         if (in_light > 0.0) {
             break;
         }
@@ -138,7 +155,7 @@ fn fs_main(vert: VertexOutput) -> @location(0) vec4<f32> {
 
         // radiance
         let radiance_strength = max(dot(normal_dir, light_dir), 0.0);
-        let radiance = radiance_strength * light.color.xyz * light.color.w * light_attenuation;
+        let radiance = radiance_strength * light.color.xyz * light.color.w * light_attenuation * in_light;
 
         // brdf shading
         total_radiance += radiance * brdf(

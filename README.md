@@ -18,6 +18,8 @@ Controls:
 - PBS
 - glTF models
 - 1 realtime pointlight
+- Shadow mapping
+- Soft shadows
 - Simple wgsl preprocessor for includes
 - Runs on WASM and native desktop
   - Tested on:
@@ -27,7 +29,6 @@ Controls:
     - `Chrome 109.0.5414.120`
 
 TODO:
-- Shadow mapping
 - Transparency
 - Restructuring
     - Simplify/abstract renderpasses; will be nice to have for PP and GI
