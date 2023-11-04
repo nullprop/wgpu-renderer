@@ -74,7 +74,8 @@ fn sample_direct_light(index: i32, light_coords: vec4<f32>) -> f32 {
     let flip_correction = vec2<f32>(0.5, -0.5);
     let proj_correction = 1.0 / light_coords.w;
     let light_local = light_coords.xy * flip_correction * proj_correction + vec2<f32>(0.5, 0.5);
-    let reference_depth = light_coords.z * proj_correction;
+    let bias = 0.000001;
+    let reference_depth = light_coords.z * proj_correction - bias;
 
     var total_sample = 0.0;
     for (var i: i32 = 0; i < SHADOW_SAMPLES; i++) {
