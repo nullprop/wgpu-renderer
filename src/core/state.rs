@@ -165,7 +165,7 @@ impl State {
                     aspect: wgpu::TextureAspect::All,
                     base_mip_level: 0,
                     mip_level_count: None,
-                    base_array_layer: i as u32,
+                    base_array_layer: i,
                     array_layer_count: Some(1),
                 })
             })
