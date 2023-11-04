@@ -33,7 +33,7 @@ impl LightUniform {
             position,
             _padding: 0,
             color,
-            matrices: matrices,
+            matrices,
         }
     }
 }

@@ -22,8 +22,8 @@ impl RenderPass {
     ) -> Self {
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some((label.to_owned() + " pipeline Layout").as_str()),
-            bind_group_layouts: bind_group_layouts,
-            push_constant_ranges: push_constant_ranges,
+            bind_group_layouts,
+            push_constant_ranges,
         });
         let shader = wgpu::ShaderModuleDescriptor {
             label: Some(shader_name),
@@ -80,7 +80,7 @@ impl RenderPass {
                 entry_point: "vs_main",
                 buffers: vertex_layouts,
             },
-            fragment: fragment,
+            fragment,
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,

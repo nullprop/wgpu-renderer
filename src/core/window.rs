@@ -120,15 +120,14 @@ pub async fn run() {
 
 fn lock_cursor(window: &winit::window::Window, lock: bool) {
     if lock {
-        match window
+        if let Err(e) = window
             .set_cursor_grab(if cfg!(target_arch = "wasm32") {
                 winit::window::CursorGrabMode::Locked
             } else {
                 winit::window::CursorGrabMode::Confined
             })
         {
-            Err(e) => println!("Failed to grab cursor {e:?}"),
-            _ => ()
+            println!("Failed to grab cursor {e:?}")
         }
         window.set_cursor_visible(false);
     } else {
