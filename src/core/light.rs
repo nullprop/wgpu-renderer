@@ -41,6 +41,14 @@ impl LightUniform {
     }
 }
 
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct LightMatrixUniform {
+    pub value: u32,
+    // No DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED in WebGL
+    _padding: [u32; 3],
+}
+
 pub trait DrawLight<'a> {
     fn draw_light_mesh(
         &mut self,

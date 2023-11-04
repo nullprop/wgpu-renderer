@@ -8,6 +8,7 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 
 #[cfg(debug_assertions)]
 fn create_window(event_loop: &EventLoop<()>) -> winit::window::Window {
+    log::info!("Creating window");
     use winit::dpi::PhysicalSize;
     WindowBuilder::new()
         .with_inner_size(PhysicalSize::new(1280, 720))
@@ -18,6 +19,7 @@ fn create_window(event_loop: &EventLoop<()>) -> winit::window::Window {
 
 #[cfg(not(debug_assertions))]
 fn create_window(event_loop: &EventLoop<()>) -> winit::window::Window {
+    log::info!("Creating window");
     WindowBuilder::new()
         .with_fullscreen(Some(winit::window::Fullscreen::Borderless(None)))
         .with_maximized(true)
@@ -31,6 +33,7 @@ pub async fn run() {
 
     #[cfg(target_arch = "wasm32")]
     {
+        log::info!("Appending canvas to document");
         use winit::platform::web::WindowExtWebSys;
         web_sys::window()
             .and_then(|win| win.document())
@@ -103,6 +106,7 @@ pub async fn run() {
                             }
                         }
                         WindowEvent::Resized(physical_size) => {
+                            log::info!("WindowEvent::Resized {}:{}", physical_size.width, physical_size.height);
                             state.resize(*physical_size);
                             window.request_redraw();
                         }
