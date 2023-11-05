@@ -34,10 +34,11 @@ Controls:
 *Native only
 
 TODO:
+- Improve shadowmap artifacts
 - Transparency
-- Restructuring
-    - Simplify/abstract renderpasses; will be nice to have for PP and GI
-    - `src/core/state.rs` is a mess; separate input handling, pipeline, passes
+- Refactor
+    - Simplify/abstract renderpasses
+    - `src/core/state.rs` is a mess
 - SSAO
 - Bloom
 - AA
