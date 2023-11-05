@@ -41,15 +41,6 @@ impl LightUniform {
     }
 }
 
-#[repr(C)]
-#[derive(Debug, Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct GlobalUniforms {
-    pub light_matrix_index: u32,
-    // No DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED in WebGL
-    pub use_shadowmaps: u32,
-    _padding: [u32; 2],
-}
-
 pub trait DrawLight<'a> {
     fn draw_light_mesh(
         &mut self,
