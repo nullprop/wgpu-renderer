@@ -17,14 +17,14 @@ struct Light {
 var<uniform> light: Light;
 
 // Needs to be 16 bytes in WebGL
-struct LightMatrixIndex {
-    value: u32,
-    _padding: u32,
+struct GlobalUniforms {
+    light_matrix_index: u32,
+    use_shadowmaps: u32,
     _padding1: u32,
     _padding2: u32,
 }
 @group(1) @binding(1)
-var<uniform> light_matrix_index: LightMatrixIndex;
+var<uniform> global_uniforms: GlobalUniforms;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
