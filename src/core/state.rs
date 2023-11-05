@@ -6,8 +6,6 @@ use std::time::Duration;
 
 use wgpu::util::DeviceExt;
 use winit::{event::*, window::Window};
-use winit::dpi::PhysicalSize;
-use crate::core::light::GlobalUniforms;
 
 use super::camera::{Camera, CameraController, CameraUniform};
 use super::instance::{Instance, InstanceRaw};
@@ -19,6 +17,15 @@ use super::texture::Texture;
 
 const SHADOW_MAP_SIZE: u32 = 1024;
 const SHADOW_MAP_LAYERS: u32 = 6;
+
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct GlobalUniforms {
+    pub light_matrix_index: u32,
+    // No DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED in WebGL
+    pub use_shadowmaps: u32,
+    _padding: [u32; 2],
+}
 
 pub struct State {
     pub size: winit::dpi::PhysicalSize<u32>,
