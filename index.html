@@ -12,12 +12,14 @@
             padding: 0;
             background: black;
         }
+
         canvas {
             background-color: black;
             display: block;
             width: 100vw;
             height: 100vh;
         }
+
         #loading {
             color: white;
             position: absolute;
@@ -29,14 +31,20 @@
 </head>
 
 <body>
-    <h1 id="loading">Loading...</h1>
-    <script type="module">
-        import init from "./pkg/wgpu_renderer.js";
+<h1 id="loading">Loading...</h1>
+<script type="module">
+    import init from "./pkg/wgpu_renderer.js";
+
+    // TODO: still on GL, uncomment once WebGPU works
+    // if (!navigator.gpu) {
+    //     document.getElementById("loading").innerText = "WebGPU not supported :(";
+    // } else {
         init().then(() => {
             console.log("WASM Loaded");
-            document.getElementById("loading")?.remove();
+            document.getElementById("loading").remove();
         });
-    </script>
+    // }
+</script>
 </body>
 
 </html>

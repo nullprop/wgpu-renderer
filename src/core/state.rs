@@ -7,7 +7,7 @@ use std::time::Duration;
 use wgpu::util::DeviceExt;
 use winit::{event::*, window::Window};
 use winit::dpi::PhysicalSize;
-use crate::core::light::LightMatrixUniform;
+use crate::core::light::GlobalUniforms;
 
 use super::camera::{Camera, CameraController, CameraUniform};
 use super::instance::{Instance, InstanceRaw};
@@ -45,7 +45,7 @@ pub struct State {
     light_depth_bind_group: wgpu::BindGroup,
     light_depth_pass: RenderPass,
     light_depth_texture_target_views: [TextureView; SHADOW_MAP_LAYERS as usize],
-    light_matrix_uniform: LightMatrixUniform,
+    light_matrix_uniform: GlobalUniforms,
     light_matrix_buffer: wgpu::Buffer,
 }
 
@@ -56,7 +56,7 @@ impl State {
         let mut size = window.inner_size();
         size.width = size.width.max(1);
         size.height = size.height.max(1);
-        let instance = wgpu::Instance::new(InstanceDescriptor { backends: Backends::all(), ..Default::default() });
+        let instance = wgpu::Instance::new(InstanceDescriptor { backends: Backends::PRIMARY | Backends::GL, ..Default::default() });
         let surface = unsafe { instance.create_surface(window) }.unwrap();
 
         let adapter = instance
@@ -73,13 +73,14 @@ impl State {
                 &wgpu::DeviceDescriptor {
                     features: wgpu::Features::default(),
                     limits: if cfg!(target_arch = "wasm32") {
+                        // TODO: remove once webgpu?
                         wgpu::Limits::downlevel_webgl2_defaults()
                     } else {
                         wgpu::Limits::default()
                     },
                     label: None,
                 },
-                None, // Trace path
+                None,
             )
             .await
             .expect("failed to get device");
@@ -186,7 +187,7 @@ impl State {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let light_matrix_uniform = LightMatrixUniform::default();
+        let light_matrix_uniform = GlobalUniforms::default();
         let light_matrix_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Light Matrix UB"),
             contents: bytemuck::cast_slice(&[light_matrix_uniform]),
@@ -194,7 +195,7 @@ impl State {
         });
 
         let light_uniform_size = mem::size_of::<LightUniform>() as u64;
-        let light_matrix_uniform_size = mem::size_of::<LightMatrixUniform>() as u64;
+        let light_matrix_uniform_size = mem::size_of::<GlobalUniforms>() as u64;
         let light_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
@@ -209,10 +210,11 @@ impl State {
                         },
                         count: None,
                     },
-                    // matrix index
+                    // matrix index, use shadowmaps
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
-                        visibility: wgpu::ShaderStages::VERTEX,
+                        // TODO: remove fragment vis once no shadowmap uniform
+                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
@@ -506,7 +508,8 @@ impl State {
 
         // render light to depth textures
         for i in 0..SHADOW_MAP_LAYERS as usize {
-            self.light_matrix_uniform.value = i as u32;
+            self.light_matrix_uniform.light_matrix_index = i as u32;
+            self.light_matrix_uniform.use_shadowmaps = if cfg!(target_arch = "wasm32") { 0u32 } else { 1u32 };
             self.queue.write_buffer(
                 &self.light_matrix_buffer,
                 0,
