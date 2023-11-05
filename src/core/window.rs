@@ -11,8 +11,9 @@ fn create_window(event_loop: &EventLoop<()>) -> winit::window::Window {
     log::info!("Creating window");
     use winit::dpi::PhysicalSize;
     WindowBuilder::new()
-        .with_inner_size(PhysicalSize::new(1280, 720))
-        .with_maximized(false)
+        .with_inner_size(PhysicalSize::new(1920, 1080))
+        .with_fullscreen(Some(winit::window::Fullscreen::Borderless(None)))
+        .with_maximized(true)
         .build(event_loop)
         .unwrap()
 }
