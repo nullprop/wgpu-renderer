@@ -2,6 +2,10 @@ use std::time::Duration;
 
 use cgmath::num_traits::clamp;
 use winit::{dpi::PhysicalPosition, event::*};
+use winit::keyboard::{PhysicalKey, KeyCode};
+
+pub const NEAR_PLANE: f32 = 1.0;
+pub const FAR_PLANE: f32 = 3000.0;
 
 pub struct Camera {
     pub position: cgmath::Point3<f32>,
@@ -27,35 +31,6 @@ impl PerspectiveProjection {
     }
 }
 
-pub struct OrthoProjection {
-    pub left: f32,
-    pub right: f32,
-    pub bottom: f32,
-    pub top: f32,
-    pub znear: f32,
-    pub zfar: f32,
-}
-
-impl OrthoProjection {
-    pub fn resize(&mut self, width: u32, height: u32) {
-        self.left = width as f32 * -0.5;
-        self.right = width as f32 * 0.5;
-        self.bottom = height as f32 * -0.5;
-        self.top = height as f32 * 0.5;
-    }
-
-    pub fn get_matrix(&self) -> cgmath::Matrix4<f32> {
-        cgmath::ortho(
-            self.left,
-            self.right,
-            self.bottom,
-            self.top,
-            self.znear,
-            self.zfar,
-        )
-    }
-}
-
 impl Camera {
     pub fn new(
         position: cgmath::Point3<f32>,
@@ -71,8 +46,8 @@ impl Camera {
             projection: PerspectiveProjection {
                 aspect,
                 fovy,
-                znear: 0.1,
-                zfar: 3000.0,
+                znear: NEAR_PLANE,
+                zfar: FAR_PLANE,
             },
         }
     }
@@ -201,38 +176,32 @@ impl CameraController {
             None => false,
             Some(event) => match event {
                 WindowEvent::KeyboardInput {
-                    input:
-                        KeyboardInput {
-                            state,
-                            virtual_keycode: Some(keycode),
-                            ..
-                        },
+                    event: key_event,
                     ..
                 } => {
-                    let is_pressed = *state == ElementState::Pressed;
-                    let amount = if is_pressed { 1.0 } else { 0.0 };
-                    match keycode {
-                        VirtualKeyCode::W | VirtualKeyCode::Up => {
+                    let amount = if key_event.state == ElementState::Pressed { 1.0 } else { 0.0 };
+                    match key_event.physical_key {
+                        PhysicalKey::Code(KeyCode::KeyW) | PhysicalKey::Code(KeyCode::ArrowUp) => {
                             self.move_forward = amount;
                             true
                         }
-                        VirtualKeyCode::A | VirtualKeyCode::Left => {
+                        PhysicalKey::Code(KeyCode::KeyA) | PhysicalKey::Code(KeyCode::ArrowLeft) => {
                             self.move_left = amount;
                             true
                         }
-                        VirtualKeyCode::S | VirtualKeyCode::Down => {
+                        PhysicalKey::Code(KeyCode::KeyS) | PhysicalKey::Code(KeyCode::ArrowDown) => {
                             self.move_backward = amount;
                             true
                         }
-                        VirtualKeyCode::D | VirtualKeyCode::Right => {
+                        PhysicalKey::Code(KeyCode::KeyD) | PhysicalKey::Code(KeyCode::ArrowRight) => {
                             self.move_right = amount;
                             true
                         }
-                        VirtualKeyCode::Space => {
+                        PhysicalKey::Code(KeyCode::Space) => {
                             self.move_up = amount;
                             true
                         }
-                        VirtualKeyCode::LControl => {
+                        PhysicalKey::Code(KeyCode::ControlLeft) => {
                             self.move_down = amount;
                             true
                         }

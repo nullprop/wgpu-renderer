@@ -14,36 +14,36 @@ path = "src/main.rs"
 opt-level = 1 # loading gltf is super slow without this
 
 [dependencies]
-winit = "0.28.3"
+winit = { version = "0.29.3", features = ["rwh_05"] }
 env_logger = "0.10.0"
 log = "0.4.17"
-wgpu = "0.14.2"
-pollster = "0.2.5"
-bytemuck = { version = "1.13.0", features = ["derive"] }
-image = { version = "0.24.5", features = ["png", "tga"] }
-anyhow = "1.0.68"
+wgpu = "0.18.0"
+pollster = "0.3.0"
+bytemuck = { version = "1.14.0", features = ["derive"] }
+image = { version = "0.24.7", features = ["png", "tga"] }
+anyhow = "1.0.75"
 cgmath = "0.18"
-tobj = { version = "3.2.1", features = ["async"] }
-gltf = "1.0.0"
-wgpu-types = "0.14.1"
-regex = "1.7.1"
-rust-embed = { version = "6.4.2", features = ["debug-embed"]}
-cfg-if = "1"
-instant = "0.1.12"
+tobj = { version = "4.0.0", features = ["async"] }
+gltf = "1.3.0"
+wgpu-types = "0.18.0"
+regex = "1.10.2"
+rust-embed = { version = "8.0.0", features = ["debug-embed"] }
+cfg-if = "1.0.0"
+instant = { version = "0.1.12", features = ["wasm-bindgen"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.6"
-console_log = "0.2.0"
-wgpu = { version = "0.14", features = ["webgl"]}
+console_log = "1.0.0"
+wgpu = { version = "0.18.0", features = ["webgl"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4.30"
 web-sys = { version = "0.3", features = [
     "Document",
     "Window",
     "Element",
-]}
+] }
 
 [build-dependencies]
-anyhow = "1.0.68"
-fs_extra = "1.2.0"
+anyhow = "1.0.75"
+fs_extra = "1.3.0"
 glob = "0.3.1"

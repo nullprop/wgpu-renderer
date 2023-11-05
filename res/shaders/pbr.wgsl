@@ -39,72 +39,146 @@ fn vs_main(
     out.tangent_light_position = tangent_matrix * light.position;
     out.tangent_view_position = tangent_matrix * camera.position.xyz;
 
-    out.world_position = world_position.xyz;
-    out.light_local_position = camera.proj * camera.view * world_position;
+    out.world_position = world_position;
 
     return out;
 }
 
 // Fragment shader
 
-@group(2) @binding(0)
+@group(2)@binding(0)
+var t_light_depth: texture_depth_2d_array;
+@group(2) @binding(1)
+var s_light_depth: sampler_comparison;
+
+@group(3) @binding(0)
 var t_diffuse: texture_2d<f32>;
-@group(2)@binding(1)
+@group(3)@binding(1)
 var s_diffuse: sampler;
 
-@group(2)@binding(2)
+@group(3)@binding(2)
 var t_normal: texture_2d<f32>;
-@group(2) @binding(3)
+@group(3) @binding(3)
 var s_normal: sampler;
 
-@group(2)@binding(4)
+@group(3)@binding(4)
 var t_roughness_metalness: texture_2d<f32>;
-@group(2) @binding(5)
+@group(3) @binding(5)
 var s_roughness_metalness: sampler;
 
+fn sample_direct_light(index: i32, light_coords: vec4<f32>) -> f32 {
+    if (light_coords.w <= 0.0) {
+        return 0.0;
+    }
+
+    let flip_correction = vec2<f32>(0.5, -0.5);
+    let proj_correction = 1.0 / light_coords.w;
+    let light_local = light_coords.xy * flip_correction * proj_correction + vec2<f32>(0.5, 0.5);
+    let bias = 0.000001;
+    let reference_depth = light_coords.z * proj_correction - bias;
+
+    var total_sample = 0.0;
+    for (var i: i32 = 0; i < SHADOW_SAMPLES; i++) {
+        let phase = i % 4;
+        var offset = vec2<f32>(f32(i / 4) * SHADOW_SAMPLE_DIST);
+        if (phase == 1 || phase == 3) {
+            offset.x = -offset.x;
+        }
+        if (phase == 2 || phase == 3) {
+            offset.y = -offset.y;
+        }
+        let s = textureSampleCompare(
+            t_light_depth,
+            s_light_depth,
+            light_local + offset,
+            index,
+            reference_depth
+        );
+        total_sample += s * INV_SHADOW_SAMPLES;
+    }
+
+    return total_sample;
+}
+
 @fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+fn fs_main(vert: VertexOutput) -> @location(0) vec4<f32> {
     // textures
-    let object_color: vec4<f32> = textureSample(t_diffuse, s_diffuse, in.tex_coords);
-    let object_normal: vec4<f32> = textureSample(t_normal, s_normal, in.tex_coords);
+    let object_color: vec4<f32> = textureSample(t_diffuse, s_diffuse, vert.tex_coords);
+    let object_normal: vec4<f32> = textureSample(t_normal, s_normal, vert.tex_coords);
     let object_roughness_metalness: vec4<f32> = textureSample(
-        t_roughness_metalness, s_roughness_metalness, in.tex_coords);
-    //let light_depth = textureSampleCompareLevel(t_light_depth, s_light_depth, in.light_local_position.xy, 1.0);
+        t_roughness_metalness, s_roughness_metalness, vert.tex_coords);
 
     let albedo = object_color.xyz;
     // TODO: pass factors to shader
     let roughness = object_roughness_metalness.y * 1.0;
     let metalness = object_roughness_metalness.z * 1.0;
     
-    // lighting vecs
-    let normal_dir = object_normal.xyz * 2.0 - 1.0;
-    var light_dir = normalize(in.tangent_light_position - in.tangent_position);
-    let view_dir = normalize(in.tangent_view_position - in.tangent_position);
-    let half_dir = normalize(view_dir + light_dir);
+    var total_radiance: vec3<f32>;
 
-    // attenuation
-    let light_dist = length(light.position - in.world_position);
-    let coef_a = 0.0;
-    let coef_b = 1.0;
-    let light_attenuation = 1.0 / (1.0 + coef_a * light_dist + coef_b * light_dist * light_dist);
+    var in_light = 0.0;
 
-    // radiance
-    let radiance_strength = max(dot(normal_dir, light_dir), 0.0);
-    let radiance = radiance_strength * light.color.xyz * light.color.w * light_attenuation;
+    // Depth sampling is broken in WebGL...
+    // TODO: remove once WebGPU
+    if (global_uniforms.use_shadowmaps > 0u) {
+        for (var i: i32 = 0; i < 6; i++) {
+            let light_coords = light.matrices[i] * vert.world_position;
 
-    // brdf shading
-    let total_radiance = radiance * brdf(
-        normal_dir,
-        light_dir,
-        view_dir,
-        half_dir,
-        albedo,
-        roughness,
-        metalness
-    );
+            let light_dir = normalize(light_coords.xyz);
+            let bias = 0.01;
+            // z can never be smaller than this inside 90 degree frustum
+            if (light_dir.z < INV_SQRT_3 - bias) {
+                continue;
+            }
+            // x and y can never be larger than this inside frustum
+            if (abs(light_dir.y) > INV_SQRT_2 + bias) {
+                continue;
+            }
+            if (abs(light_dir.x) > INV_SQRT_2 + bias) {
+                continue;
+            }
+
+            in_light = sample_direct_light(i, light_coords);
+            // TODO should break even if 0 since we're inside frustum.
+            // See if causes issues with bias overlap between directions.
+            if (in_light > 0.0) {
+                break;
+            }
+        }
+    } else {
+        in_light = 1.0;
+    }
+
+    if (in_light > 0.0) {
+        // lighting vecs
+        let normal_dir = object_normal.xyz * 2.0 - 1.0;
+        var light_dir = normalize(vert.tangent_light_position - vert.tangent_position);
+        let view_dir = normalize(vert.tangent_view_position - vert.tangent_position);
+        let half_dir = normalize(view_dir + light_dir);
+
+        // attenuation
+        let light_dist = length(light.position - vert.world_position.xyz);
+        let coef_a = 0.0;
+        let coef_b = 1.0;
+        let light_attenuation = 1.0 / (1.0 + coef_a * light_dist + coef_b * light_dist * light_dist);
+
+        // radiance
+        let radiance_strength = max(dot(normal_dir, light_dir), 0.0);
+        let radiance = radiance_strength * light.color.xyz * light.color.w * light_attenuation * in_light;
+
+        // brdf shading
+        total_radiance += radiance * brdf(
+            normal_dir,
+            light_dir,
+            view_dir,
+            half_dir,
+            albedo,
+            roughness,
+            metalness
+        );
+    }
 
     // ambient
-    let ambient_strength = 0.01;
+    let ambient_strength = 0.02;
     let ambient_color = ambient_strength * albedo;
 
     var result = ambient_color + total_radiance;

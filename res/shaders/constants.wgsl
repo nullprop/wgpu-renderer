@@ -1,1 +1,6 @@
-let PI = 3.14159;
+const PI = 3.14159;
+const INV_SQRT_2 = 0.70710678118654752440; // 1 / sqrt(2)
+const INV_SQRT_3 = 0.57735026918962576451; // 1 / sqrt(3)
+const SHADOW_SAMPLES = 8;
+const INV_SHADOW_SAMPLES = 1.0 / 8.0;
+const SHADOW_SAMPLE_DIST = 0.001;

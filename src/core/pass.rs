@@ -18,11 +18,12 @@ impl RenderPass {
         depth_format: Option<TextureFormat>,
         vertex_layouts: &[VertexBufferLayout],
         label: &str,
+        is_shadow: bool,
     ) -> Self {
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some((label.to_owned() + " pipeline Layout").as_str()),
-            bind_group_layouts: bind_group_layouts,
-            push_constant_ranges: push_constant_ranges,
+            bind_group_layouts,
+            push_constant_ranges,
         });
         let shader = wgpu::ShaderModuleDescriptor {
             label: Some(shader_name),
@@ -36,6 +37,7 @@ impl RenderPass {
             vertex_layouts,
             shader,
             label,
+            is_shadow,
         );
 
         Self { pipeline }
@@ -49,6 +51,7 @@ impl RenderPass {
         vertex_layouts: &[wgpu::VertexBufferLayout],
         shader: wgpu::ShaderModuleDescriptor,
         label: &str,
+        is_shadow: bool,
     ) -> wgpu::RenderPipeline {
         let shader = device.create_shader_module(shader);
 
@@ -77,7 +80,7 @@ impl RenderPass {
                 entry_point: "vs_main",
                 buffers: vertex_layouts,
             },
-            fragment: fragment,
+            fragment,
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
@@ -93,9 +96,16 @@ impl RenderPass {
             depth_stencil: depth_format.map(|format| wgpu::DepthStencilState {
                 format,
                 depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
+                depth_compare: if is_shadow { wgpu::CompareFunction::LessEqual } else { wgpu::CompareFunction::Less },
                 stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState::default(),
+                bias: if is_shadow {
+                    wgpu::DepthBiasState {
+                        constant: 2, // bilinear
+                        slope_scale: 2.0,
+                        clamp: 0.0,
+                    }
+                }
+                else { wgpu::DepthBiasState::default() },
             }),
             multisample: wgpu::MultisampleState {
                 count: 1,

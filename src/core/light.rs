@@ -1,23 +1,53 @@
 use std::ops::Range;
 
-use super::model::{Mesh, Model};
+use super::{
+    camera::{FAR_PLANE, NEAR_PLANE},
+    model::{Mesh, Model},
+};
+
+use cgmath::{Matrix4, Vector3};
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Debug, Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct LightUniform {
     pub position: [f32; 3],
     _padding: u32,
     pub color: [f32; 4],
+    pub matrices: [[[f32; 4]; 4]; 6],
 }
 
 impl LightUniform {
     pub fn new(position: [f32; 3], color: [f32; 4]) -> Self {
-        Self {
+        let mut s = Self {
             position,
             _padding: 0,
             color,
-        }
+            ..Default::default()
+        };
+        s.update_matrices();
+        s
     }
+
+    pub fn update_matrices(&mut self) {
+        let proj = cgmath::perspective(cgmath::Deg(90.0), 1.0, NEAR_PLANE, FAR_PLANE);
+        self.matrices = [
+            (proj * Matrix4::look_to_rh(self.position.into(), Vector3::unit_x(), Vector3::unit_y())).into(), // forward
+            (proj * Matrix4::look_to_rh(self.position.into(), -Vector3::unit_x(), Vector3::unit_y())).into(), // back
+            (proj * Matrix4::look_to_rh(self.position.into(), Vector3::unit_y(), Vector3::unit_x())).into(), // up
+            (proj * Matrix4::look_to_rh(self.position.into(), -Vector3::unit_y(), -Vector3::unit_x())).into(), // down
+            (proj * Matrix4::look_to_rh(self.position.into(), Vector3::unit_z(), Vector3::unit_y())).into(), // right
+            (proj * Matrix4::look_to_rh(self.position.into(), -Vector3::unit_z(), Vector3::unit_y())).into(), // left
+        ];
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct GlobalUniforms {
+    pub light_matrix_index: u32,
+    // No DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED in WebGL
+    pub use_shadowmaps: u32,
+    _padding: [u32; 2],
 }
 
 pub trait DrawLight<'a> {
@@ -53,8 +83,8 @@ pub trait DrawLight<'a> {
 }
 
 impl<'a, 'b> DrawLight<'b> for wgpu::RenderPass<'a>
-where
-    'b: 'a,
+    where
+        'b: 'a,
 {
     fn draw_light_mesh(
         &mut self,

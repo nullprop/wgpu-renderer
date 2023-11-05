@@ -13,5 +13,5 @@ fn vs_main(
     );
 
     let world_position = model_matrix * vec4<f32>(model.position, 1.0);
-    return camera.proj * camera.view * world_position;
+    return light.matrices[global_uniforms.light_matrix_index] * world_position;
 }

@@ -11,9 +11,20 @@ var<uniform> camera: CameraUniform;
 struct Light {
     position: vec3<f32>,
     color: vec4<f32>,
+    matrices: array<mat4x4<f32>, 6>,
 }
 @group(1) @binding(0)
 var<uniform> light: Light;
+
+// Needs to be 16 bytes in WebGL
+struct GlobalUniforms {
+    light_matrix_index: u32,
+    use_shadowmaps: u32,
+    _padding1: u32,
+    _padding2: u32,
+}
+@group(1) @binding(1)
+var<uniform> global_uniforms: GlobalUniforms;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
@@ -39,13 +50,5 @@ struct VertexOutput {
     @location(1) tangent_position: vec3<f32>,
     @location(2) tangent_light_position: vec3<f32>,
     @location(3) tangent_view_position: vec3<f32>,
-    @location(4) world_position: vec3<f32>,
-    @location(5) light_local_position: vec4<f32>,
+    @location(4) world_position: vec4<f32>,
 }
-
-// Fragment shader
-
-@group(1)@binding(1)
-var t_light_depth: texture_depth_2d;
-@group(1) @binding(2)
-var s_light_depth: sampler_comparison;

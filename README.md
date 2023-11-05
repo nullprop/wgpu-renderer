@@ -4,7 +4,8 @@ A small [wgpu](https://github.com/gfx-rs/wgpu) renderer written in [Rust](https:
 
 ## Try it out
 [rasanen.dev/wgpu-renderer](https://rasanen.dev/wgpu-renderer)  
-Note: the .wasm is about 50 MB because it embeds Sponza.
+Note: the .wasm is about 50 MB because it embeds Sponza.  
+Note: shadowmaps are not enabled on WebGL.
 
 Controls:
 - WASD - Move horizontally
@@ -15,22 +16,23 @@ Controls:
 
 ## Features
 
-- Physically based shading
-  - (F: Fresnel-Schlick approximation)
-  - (G: Smith's Schlick-GGX)
-  - (D: Trowbridge-Reitz GGX)
+- PBS
 - glTF models
 - 1 realtime pointlight
+- Shadow mapping*
+- Soft shadows*
 - Simple wgsl preprocessor for includes
 - Runs on WASM and native desktop
   - Tested on:
-    - `Manjaro Linux 22.0.1 (6.1.7-1-MANJARO)`
+    - `Ubuntu 22.04 (Mesa 23.1.0-devel)`
     - `Windows 10 Pro 21H2`
     - `Firefox 109.0`
     - `Chrome 109.0.5414.120`
 
+*Native only
+
 TODO:
-- Shadow mapping
+- Transparency
 - Restructuring
     - Simplify/abstract renderpasses; will be nice to have for PP and GI
     - `src/core/state.rs` is a mess; separate input handling, pipeline, passes
