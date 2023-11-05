@@ -15,7 +15,7 @@ use super::pass::RenderPass;
 use super::resources;
 use super::texture::Texture;
 
-const SHADOW_MAP_SIZE: u32 = 1024;
+const SHADOW_MAP_SIZE: u32 = 2048;
 const SHADOW_MAP_LAYERS: u32 = 6;
 
 #[repr(C)]
