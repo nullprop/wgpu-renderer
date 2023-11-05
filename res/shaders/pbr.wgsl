@@ -78,23 +78,19 @@ fn sample_direct_light(index: i32, light_coords: vec4<f32>) -> f32 {
     let reference_depth = light_coords.z * proj_correction - bias;
 
     var total_sample = 0.0;
-    for (var i: i32 = 0; i < SHADOW_SAMPLES; i++) {
-        let phase = i % 4;
-        var offset = vec2<f32>(f32(i / 4) * SHADOW_SAMPLE_DIST);
-        if (phase == 1 || phase == 3) {
-            offset.x = -offset.x;
+    for (var x: i32 = -SHADOW_SAMPLES; x < SHADOW_SAMPLES; x++) {
+        for (var y: i32 = -SHADOW_SAMPLES; y < SHADOW_SAMPLES; y++) {
+            let texelSize = vec2<f32>(textureDimensions(t_light_depth));
+            let offset = vec2<f32>(f32(x), f32(y)) / texelSize.xy;
+            let s = textureSampleCompare(
+                t_light_depth,
+                s_light_depth,
+                light_local + offset,
+                index,
+                reference_depth
+            );
+            total_sample += s * INV_SHADOW_SAMPLES;
         }
-        if (phase == 2 || phase == 3) {
-            offset.y = -offset.y;
-        }
-        let s = textureSampleCompare(
-            t_light_depth,
-            s_light_depth,
-            light_local + offset,
-            index,
-            reference_depth
-        );
-        total_sample += s * INV_SHADOW_SAMPLES;
     }
 
     return total_sample;
