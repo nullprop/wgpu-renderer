@@ -34,6 +34,7 @@ Controls:
 *Native only
 
 TODO:
+- Get shadowmaps to work on WebGL?
 - Improve shadowmap artifacts
 - Transparency
 - Refactor
