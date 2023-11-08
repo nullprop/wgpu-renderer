@@ -1,7 +1,9 @@
 use wgpu::util::DeviceExt;
 use rust_embed::RustEmbed;
 
-use crate::core::model::{Material, Mesh, Model, ModelVertex};
+use crate::core::model::{Model, ModelVertex};
+use crate::core::mesh::Mesh;
+use crate::core::material::Material;
 use crate::core::texture::Texture;
 
 #[derive(RustEmbed)]
@@ -191,7 +193,7 @@ pub async fn load_model_gltf(
             gltf_image_format_to_wgpu(diffuse_data.format, true),
             Some(file_name),
         )
-        .unwrap();
+            .unwrap();
 
         // normal
         let normal_index = material
@@ -220,7 +222,7 @@ pub async fn load_model_gltf(
             gltf_image_format_to_wgpu(normal_data.format, false),
             Some(file_name),
         )
-        .unwrap();
+            .unwrap();
 
         // roughness-metalness
         let rm_index = pbr
@@ -250,7 +252,7 @@ pub async fn load_model_gltf(
             gltf_image_format_to_wgpu(rm_data.format, false),
             Some(file_name),
         )
-        .unwrap();
+            .unwrap();
 
         materials.push(Material::new(
             device,
@@ -294,7 +296,7 @@ fn gltf_image_format_to_wgpu(format: gltf::image::Format, srgb: bool) -> wgpu::T
         gltf::image::Format::R16G16 => wgpu::TextureFormat::Rg16Unorm,
         gltf::image::Format::R16G16B16 => wgpu::TextureFormat::Rgba16Unorm, // converted
         gltf::image::Format::R16G16B16A16 => wgpu::TextureFormat::Rgba16Unorm,
-        gltf::image::Format::R32G32B32FLOAT => wgpu::TextureFormat::Rgba32Float   ,
+        gltf::image::Format::R32G32B32FLOAT => wgpu::TextureFormat::Rgba32Float,
         gltf::image::Format::R32G32B32A32FLOAT => wgpu::TextureFormat::Rgba32Float,
     }
 }
