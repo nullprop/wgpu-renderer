@@ -21,10 +21,10 @@ const SHADOW_MAP_LAYERS: u32 = 6;
 #[repr(C)]
 #[derive(Debug, Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GlobalUniforms {
+    pub time: f32,
     pub light_matrix_index: u32,
-    // No DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED in WebGL
     pub use_shadowmaps: u32,
-    _padding: [u32; 2],
+    pub _padding: u32,
 }
 
 pub struct State {
@@ -56,8 +56,8 @@ pub struct State {
     light_depth_bind_group: wgpu::BindGroup,
     light_depth_pass: RenderPass,
     light_depth_texture_target_views: [TextureView; SHADOW_MAP_LAYERS as usize],
-    light_matrix_uniform: GlobalUniforms,
-    light_matrix_buffer: wgpu::Buffer,
+    global_uniforms: GlobalUniforms,
+    global_uniforms_buffer: wgpu::Buffer,
 }
 
 impl State {
@@ -198,10 +198,10 @@ impl State {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let light_matrix_uniform = GlobalUniforms::default();
-        let light_matrix_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let global_uniforms = GlobalUniforms::default();
+        let global_uniforms_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Light Matrix UB"),
-            contents: bytemuck::cast_slice(&[light_matrix_uniform]),
+            contents: bytemuck::cast_slice(&[global_uniforms]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -248,7 +248,7 @@ impl State {
                 // matrix index
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: light_matrix_buffer.as_entire_binding(),
+                    resource: global_uniforms_buffer.as_entire_binding(),
                 },
             ],
             label: Some("Light Bind Group"),
@@ -499,8 +499,8 @@ impl State {
             light_depth_bind_group,
             light_depth_pass,
             light_depth_texture_target_views,
-            light_matrix_uniform,
-            light_matrix_buffer,
+            global_uniforms,
+            global_uniforms_buffer,
         }
     }
 
@@ -560,18 +560,21 @@ impl State {
             0,
             bytemuck::cast_slice(&[self.light_uniform]),
         );
+
+        // Global uniforms
+        self.global_uniforms.time = time.as_secs_f32();
+        self.global_uniforms.use_shadowmaps = if cfg!(target_arch = "wasm32") { 0u32 } else { 1u32 };
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
 
         // render light to depth textures
         for i in 0..SHADOW_MAP_LAYERS as usize {
-            self.light_matrix_uniform.light_matrix_index = i as u32;
-            self.light_matrix_uniform.use_shadowmaps = if cfg!(target_arch = "wasm32") { 0u32 } else { 1u32 };
+            self.global_uniforms.light_matrix_index = i as u32;
             self.queue.write_buffer(
-                &self.light_matrix_buffer,
+                &self.global_uniforms_buffer,
                 0,
-                bytemuck::cast_slice(&[self.light_matrix_uniform]),
+                bytemuck::cast_slice(&[self.global_uniforms]),
             );
 
             let mut depth_encoder = self
