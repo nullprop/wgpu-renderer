@@ -45,7 +45,7 @@ pub struct State {
     geom_instance_buffer: wgpu::Buffer,
     fog_instances: Vec<Instance>,
     fog_instance_buffer: wgpu::Buffer,
-    depth_texture: Texture,
+    geometry_depth_texture: Texture,
     geom_model: Model,
     fog_model: Model,
     light_model: Model,
@@ -53,7 +53,7 @@ pub struct State {
     light_buffer: wgpu::Buffer,
     light_debug_pass: RenderPass,
     light_bind_group: wgpu::BindGroup,
-    light_depth_bind_group: wgpu::BindGroup,
+    depth_bind_group: wgpu::BindGroup,
     light_depth_pass: RenderPass,
     light_depth_texture_target_views: [TextureView; SHADOW_MAP_LAYERS as usize],
     global_uniforms: GlobalUniforms,
@@ -152,15 +152,17 @@ impl State {
 
         let camera_controller = CameraController::new(400.0, 2.0);
 
-        let depth_texture = Texture::create_depth_texture(
+        let geometry_depth_texture = Texture::create_depth_texture(
             &device,
-            "depth_texture",
+            "geometry_depth_texture",
             Some(wgpu::CompareFunction::Less),
             config.width,
             config.height,
             1,
-            wgpu::TextureUsages::RENDER_ATTACHMENT,
+            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
         );
+
+        let geometry_abs_depth_sampler = Texture::create_sampler(&device, None);
 
         let light_depth_texture = Texture::create_depth_texture(
             &device,
@@ -254,10 +256,10 @@ impl State {
             label: Some("Light Bind Group"),
         });
 
-        let light_depth_bind_group_layout =
+        let depth_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
-                    // depth textures
+                    // light cubemap
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
                         visibility: wgpu::ShaderStages::FRAGMENT,
@@ -274,14 +276,31 @@ impl State {
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
                         count: None,
                     },
+                    // geometry depth
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Depth,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
                 ],
-                label: Some("Light Depth Bind Group Layout"),
+                label: Some("Depth Bind Group Layout"),
             });
 
-        let light_depth_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &light_depth_bind_group_layout,
+        let depth_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &depth_bind_group_layout,
             entries: &[
-                // depth textures
+                // light cubemap
                 wgpu::BindGroupEntry {
                     binding: 0,
                     resource: wgpu::BindingResource::TextureView(&light_depth_texture.view),
@@ -290,8 +309,17 @@ impl State {
                     binding: 1,
                     resource: wgpu::BindingResource::Sampler(&light_depth_texture.sampler),
                 },
+                // geometry depth
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&geometry_depth_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&geometry_abs_depth_sampler),
+                },
             ],
-            label: Some("Light Depth Bind Group"),
+            label: Some("Depth Bind Group"),
         });
 
         surface.configure(&device, &config);
@@ -427,7 +455,7 @@ impl State {
             &[
                 &camera_bind_group_layout,
                 &light_bind_group_layout,
-                &light_depth_bind_group_layout,
+                &depth_bind_group_layout,
                 &texture_bind_group_layout,
             ],
             &[],
@@ -445,7 +473,7 @@ impl State {
             &[
                 &camera_bind_group_layout,
                 &light_bind_group_layout,
-                &light_depth_bind_group_layout,
+                &depth_bind_group_layout,
                 &texture_bind_group_layout,
             ],
             &[],
@@ -488,7 +516,7 @@ impl State {
             geom_instance_buffer,
             fog_instances,
             fog_instance_buffer,
-            depth_texture,
+            geometry_depth_texture,
             geom_model,
             fog_model,
             light_model,
@@ -496,7 +524,7 @@ impl State {
             light_buffer,
             light_debug_pass,
             light_bind_group,
-            light_depth_bind_group,
+            depth_bind_group,
             light_depth_pass,
             light_depth_texture_target_views,
             global_uniforms,
@@ -513,14 +541,14 @@ impl State {
             self.camera
                 .projection
                 .resize(new_size.width, new_size.height);
-            self.depth_texture = Texture::create_depth_texture(
+            self.geometry_depth_texture = Texture::create_depth_texture(
                 &self.device,
-                "depth_texture",
+                "geometry_depth_texture",
                 Some(wgpu::CompareFunction::Less),
                 self.config.width,
                 self.config.height,
                 1,
-                wgpu::TextureUsages::RENDER_ATTACHMENT,
+                wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             );
         }
     }
@@ -641,7 +669,7 @@ impl State {
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth_texture.view,
+                    view: &self.geometry_depth_texture.view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
                         store: StoreOp::Store,
@@ -657,41 +685,7 @@ impl State {
             geom_render_pass.draw_model_instanced(
                 &self.geom_model,
                 0..self.geom_instances.len() as u32,
-                [&self.camera_bind_group, &self.light_bind_group, &self.light_depth_bind_group].into(),
-            );
-        }
-        encoder.pop_debug_group();
-
-        encoder.push_debug_group("fog pass");
-        {
-            let mut fog_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Fog Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &surface_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth_texture.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-
-            fog_render_pass.set_vertex_buffer(1, self.fog_instance_buffer.slice(..));
-            fog_render_pass.set_pipeline(&self.fog_pass.pipeline);
-            fog_render_pass.draw_model_instanced(
-                &self.fog_model,
-                0..self.fog_instances.len() as u32,
-                [&self.camera_bind_group, &self.light_bind_group, &self.light_depth_bind_group].into(),
+                [&self.camera_bind_group, &self.light_bind_group, &self.depth_bind_group].into(),
             );
         }
         encoder.pop_debug_group();
@@ -710,7 +704,7 @@ impl State {
                         },
                     })],
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &self.depth_texture.view,
+                        view: &self.geometry_depth_texture.view,
                         depth_ops: Some(wgpu::Operations {
                             load: wgpu::LoadOp::Load,
                             store: StoreOp::Store,
@@ -726,6 +720,40 @@ impl State {
                 &self.light_model,
                 &self.camera_bind_group,
                 &self.light_bind_group,
+            );
+        }
+        encoder.pop_debug_group();
+
+        encoder.push_debug_group("fog pass");
+        {
+            let mut fog_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Fog Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &surface_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.geometry_depth_texture.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            fog_render_pass.set_vertex_buffer(1, self.fog_instance_buffer.slice(..));
+            fog_render_pass.set_pipeline(&self.fog_pass.pipeline);
+            fog_render_pass.draw_model_instanced(
+                &self.fog_model,
+                0..self.fog_instances.len() as u32,
+                [&self.camera_bind_group, &self.light_bind_group, &self.depth_bind_group].into(),
             );
         }
         encoder.pop_debug_group();
