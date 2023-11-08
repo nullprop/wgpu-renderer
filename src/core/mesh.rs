@@ -155,4 +155,63 @@ impl Mesh {
             v.bitangent = (cgmath::Vector3::from(v.bitangent) * denom).into();
         }
     }
+
+    /*
+    pub fn cube(device: &wgpu::Device, size: [f32; 3], name: &str, material_index: usize) -> Mesh {
+        #[rustfmt::skip]
+        let mut vertices = vec![
+            // front
+            ModelVertex { position: [-size[0], -size[1], -size[2]], tex_coords: [0.0, 0.0], normal: [-size[0], -size[1], -size[2]], ..Default::default() },
+            ModelVertex { position: [ size[0], -size[1], -size[2]], tex_coords: [0.0, 0.0], normal: [ size[0], -size[1], -size[2]], ..Default::default() },
+            ModelVertex { position: [ size[0],  size[1], -size[2]], tex_coords: [0.0, 0.0], normal: [ size[0],  size[1], -size[2]], ..Default::default() },
+            ModelVertex { position: [-size[0],  size[1], -size[2]], tex_coords: [0.0, 0.0], normal: [-size[0],  size[1], -size[2]], ..Default::default() },
+
+            // back
+            ModelVertex { position: [-size[0], -size[1],  size[2]], tex_coords: [0.0, 0.0], normal: [-size[0], -size[1],  size[2]], ..Default::default() },
+            ModelVertex { position: [ size[0], -size[1],  size[2]], tex_coords: [0.0, 0.0], normal: [ size[0], -size[1],  size[2]], ..Default::default() },
+            ModelVertex { position: [ size[0],  size[1],  size[2]], tex_coords: [0.0, 0.0], normal: [ size[0],  size[1],  size[2]], ..Default::default() },
+            ModelVertex { position: [-size[0],  size[1],  size[2]], tex_coords: [0.0, 0.0], normal: [-size[0],  size[1],  size[2]], ..Default::default() },
+        ];
+        #[rustfmt::skip]
+        let indices = vec![
+            // front
+            0, 1, 2,
+            2, 3, 0,
+            // back
+            4, 6, 5,
+            4, 7, 6,
+            // left
+            0, 3, 4,
+            3, 7, 4,
+            // right
+            1, 2, 5,
+            2, 6, 5,
+            // top
+            2, 7, 3,
+            2, 6, 7,
+            // bottom
+            1, 4, 0,
+            1, 5, 4
+        ];
+        Mesh::calc_tangents(&indices, &mut vertices);
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(&format!("{:?} Vertex Buffer", name)),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(&format!("{:?} Index Buffer", name)),
+            contents: bytemuck::cast_slice(&indices),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
+        Mesh {
+            name: name.to_string(),
+            vertex_buffer,
+            index_buffer,
+            num_elements: indices.len() as u32,
+            material: material_index,
+        }
+    }
+    */
 }
