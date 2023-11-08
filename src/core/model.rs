@@ -113,8 +113,8 @@ impl<'a, 'b> DrawModel<'b> for wgpu::RenderPass<'a>
     ) {
         self.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
         self.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-        for i in 0..bind_groups.len() {
-            self.set_bind_group(i as u32, bind_groups[i], &[]);
+        for (i, group) in bind_groups.iter().enumerate() {
+            self.set_bind_group(i as u32, group, &[]);
         }
         self.set_bind_group(bind_groups.len() as u32, &material.bind_group, &[]);
         self.draw_indexed(0..mesh.num_elements, 0, instances);
