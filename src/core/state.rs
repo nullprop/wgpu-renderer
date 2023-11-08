@@ -35,15 +35,19 @@ pub struct State {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     geometry_pass: RenderPass,
+    fog_pass: RenderPass,
     camera: Camera,
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     camera_controller: CameraController,
-    instances: Vec<Instance>,
-    instance_buffer: wgpu::Buffer,
+    geom_instances: Vec<Instance>,
+    geom_instance_buffer: wgpu::Buffer,
+    fog_instances: Vec<Instance>,
+    fog_instance_buffer: wgpu::Buffer,
     depth_texture: Texture,
-    model: Model,
+    geom_model: Model,
+    fog_model: Model,
     light_model: Model,
     light_uniform: LightUniform,
     light_buffer: wgpu::Buffer,
@@ -350,8 +354,17 @@ impl State {
                 label: Some("texture_bind_group_layout"),
             });
 
-        let model = resources::load_model_gltf(
+        let geom_model = resources::load_model_gltf(
             "models/Sponza.glb",
+            &device,
+            &queue,
+            &texture_bind_group_layout,
+        )
+            .await
+            .unwrap();
+
+        let fog_model = resources::load_model_gltf(
+            "models/Cube.glb",
             &device,
             &queue,
             &texture_bind_group_layout,
@@ -368,15 +381,28 @@ impl State {
             .await
             .unwrap();
 
-        let instances = vec![Instance {
-            position: [0.0, 0.0, 0.0].into(),
+        let geom_instances = vec![Instance {
+            // this sponza model isn't quite centered
+            position: [60.0, 0.0, 35.0].into(),
             rotation: cgmath::Quaternion::one(),
+            scale: [1.0, 1.0, 1.0].into(),
         }];
+        let geom_instance_data = geom_instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
+        let geom_instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Geometry Instance Buffer"),
+            contents: bytemuck::cast_slice(&geom_instance_data),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
 
-        let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
-        let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Instance Buffer"),
-            contents: bytemuck::cast_slice(&instance_data),
+        let fog_instances = vec![Instance {
+            position: [0.0, 20.0, 0.0].into(),
+            rotation: cgmath::Quaternion::one(),
+            scale: [1360.0, 20.0, 600.0].into(),
+        }];
+        let fog_instance_data = fog_instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
+        let fog_instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Fog Instance Buffer"),
+            contents: bytemuck::cast_slice(&fog_instance_data),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
@@ -393,6 +419,7 @@ impl State {
             &[ModelVertex::desc(), InstanceRaw::desc()],
             "light depth pass",
             true,
+            false,
         );
 
         let geometry_pass = RenderPass::new(
@@ -410,6 +437,25 @@ impl State {
             &[ModelVertex::desc(), InstanceRaw::desc()],
             "geometry pass",
             false,
+            false,
+        );
+
+        let fog_pass = RenderPass::new(
+            &device,
+            &[
+                &camera_bind_group_layout,
+                &light_bind_group_layout,
+                &light_depth_bind_group_layout,
+                &texture_bind_group_layout,
+            ],
+            &[],
+            "fog.wgsl",
+            Some(config.format),
+            Some(Texture::DEPTH_FORMAT),
+            &[ModelVertex::desc(), InstanceRaw::desc()],
+            "fog pass",
+            false,
+            true,
         );
 
         let light_debug_pass = RenderPass::new(
@@ -422,6 +468,7 @@ impl State {
             &[ModelVertex::desc()],
             "light debug pass",
             false,
+            false,
         );
 
         Self {
@@ -431,15 +478,19 @@ impl State {
             queue,
             config,
             geometry_pass,
+            fog_pass,
             camera,
             camera_uniform,
             camera_buffer,
             camera_bind_group,
             camera_controller,
-            instances,
-            instance_buffer,
+            geom_instances,
+            geom_instance_buffer,
+            fog_instances,
+            fog_instance_buffer,
             depth_texture,
-            model,
+            geom_model,
+            fog_model,
             light_model,
             light_uniform,
             light_buffer,
@@ -546,11 +597,11 @@ impl State {
                         occlusion_query_set: None,
                     });
 
-                light_depth_render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+                light_depth_render_pass.set_vertex_buffer(1, self.geom_instance_buffer.slice(..));
                 light_depth_render_pass.set_pipeline(&self.light_depth_pass.pipeline);
                 light_depth_render_pass.draw_model_instanced(
-                    &self.model,
-                    0..self.instances.len() as u32,
+                    &self.geom_model,
+                    0..self.geom_instances.len() as u32,
                     [&self.camera_bind_group, &self.light_bind_group].into(),
                 );
             }
@@ -598,11 +649,45 @@ impl State {
                 occlusion_query_set: None,
             });
 
-            geom_render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+            geom_render_pass.set_vertex_buffer(1, self.geom_instance_buffer.slice(..));
             geom_render_pass.set_pipeline(&self.geometry_pass.pipeline);
             geom_render_pass.draw_model_instanced(
-                &self.model,
-                0..self.instances.len() as u32,
+                &self.geom_model,
+                0..self.geom_instances.len() as u32,
+                [&self.camera_bind_group, &self.light_bind_group, &self.light_depth_bind_group].into(),
+            );
+        }
+        encoder.pop_debug_group();
+
+        encoder.push_debug_group("fog pass");
+        {
+            let mut fog_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Fog Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &surface_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_texture.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            fog_render_pass.set_vertex_buffer(1, self.fog_instance_buffer.slice(..));
+            fog_render_pass.set_pipeline(&self.fog_pass.pipeline);
+            fog_render_pass.draw_model_instanced(
+                &self.fog_model,
+                0..self.fog_instances.len() as u32,
                 [&self.camera_bind_group, &self.light_bind_group, &self.light_depth_bind_group].into(),
             );
         }

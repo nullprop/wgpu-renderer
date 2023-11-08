@@ -19,6 +19,7 @@ impl RenderPass {
         vertex_layouts: &[VertexBufferLayout],
         label: &str,
         is_shadow: bool,
+        has_transparency: bool,
     ) -> Self {
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some((label.to_owned() + " pipeline Layout").as_str()),
@@ -38,6 +39,7 @@ impl RenderPass {
             shader,
             label,
             is_shadow,
+            has_transparency,
         );
 
         Self { pipeline }
@@ -52,14 +54,25 @@ impl RenderPass {
         shader: wgpu::ShaderModuleDescriptor,
         label: &str,
         is_shadow: bool,
+        has_transparency: bool,
     ) -> wgpu::RenderPipeline {
         let shader = device.create_shader_module(shader);
+
+        let blend_comp = if has_transparency {
+            wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::SrcAlpha,
+                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                operation: wgpu::BlendOperation::Add,
+            }
+        } else {
+            wgpu::BlendComponent::REPLACE
+        };
 
         let fragment_targets = &[Some(wgpu::ColorTargetState {
             format: color_format.unwrap_or(wgpu::TextureFormat::Bgra8Unorm),
             blend: Some(wgpu::BlendState {
-                alpha: wgpu::BlendComponent::REPLACE,
-                color: wgpu::BlendComponent::REPLACE,
+                alpha: blend_comp,
+                color: blend_comp,
             }),
             write_mask: wgpu::ColorWrites::ALL,
         })];
@@ -104,8 +117,7 @@ impl RenderPass {
                         slope_scale: 2.0,
                         clamp: 0.0,
                     }
-                }
-                else { wgpu::DepthBiasState::default() },
+                } else { wgpu::DepthBiasState::default() },
             }),
             multisample: wgpu::MultisampleState {
                 count: 1,
