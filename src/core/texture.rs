@@ -37,7 +37,17 @@ impl Texture {
         let texture = device.create_texture(&desc);
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        let sampler = Texture::create_sampler(device, compare);
+
+        Self {
+            texture,
+            view,
+            sampler,
+        }
+    }
+
+    pub fn create_sampler(device: &wgpu::Device, compare: Option<wgpu::CompareFunction>) -> wgpu::Sampler {
+        device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
@@ -48,13 +58,7 @@ impl Texture {
             lod_min_clamp: 0.0,
             lod_max_clamp: 100.0,
             ..Default::default()
-        });
-
-        Self {
-            texture,
-            view,
-            sampler,
-        }
+        })
     }
 
     pub fn from_pixels(
