@@ -2,7 +2,8 @@ use std::ops::Range;
 
 use super::{
     camera::{FAR_PLANE, NEAR_PLANE},
-    model::{Mesh, Model},
+    model::{Model},
+    mesh::{Mesh},
 };
 
 use cgmath::{Matrix4, Vector3};
