@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use cgmath::num_traits::clamp;
+use cgmath::SquareMatrix;
 use winit::{dpi::PhysicalPosition, event::*};
 use winit::keyboard::{PhysicalKey, KeyCode};
 
@@ -105,22 +106,27 @@ impl Camera {
 pub struct CameraUniform {
     pub view: [[f32; 4]; 4],
     pub proj: [[f32; 4]; 4],
+    pub inv_view_proj: [[f32; 4]; 4],
     pub position: [f32; 4],
 }
 
 impl CameraUniform {
     pub fn new() -> Self {
-        use cgmath::SquareMatrix;
         Self {
             view: cgmath::Matrix4::identity().into(),
             proj: cgmath::Matrix4::identity().into(),
+            inv_view_proj: cgmath::Matrix4::identity().into(),
             position: [0.0; 4],
         }
     }
 
     pub fn update(&mut self, camera: &Camera) {
-        self.view = camera.get_view_matrix().into();
-        self.proj = camera.projection.get_matrix().into();
+        let view = camera.get_view_matrix();
+        let proj = camera.projection.get_matrix();
+        self.view = view.into();
+        self.proj = proj.into();
+        let inv_view_proj = (proj * view).invert().unwrap();
+        self.inv_view_proj = inv_view_proj.into();
         self.position = camera.position.to_homogeneous().into();
     }
 }

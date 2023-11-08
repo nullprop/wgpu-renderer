@@ -5,3 +5,7 @@ const INV_SQRT_3 = 0.57735026918962576451; // 1 / sqrt(3)
 // total = (2n + 1)^2
 const SHADOW_SAMPLES = 2;
 const INV_SHADOW_SAMPLES = 1.0 / 25.0;
+const FOG_MAX_STEPS = 20;
+const FOG_MAX_DIST = 300.0;
+const FOG_SCALE = 0.01;
+const FOG_DENSITY = 1.0;
