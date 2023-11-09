@@ -20,6 +20,7 @@ impl RenderPass {
         label: &str,
         is_shadow: bool,
         has_transparency: bool,
+        write_depth: bool,
     ) -> Self {
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some((label.to_owned() + " pipeline Layout").as_str()),
@@ -40,6 +41,7 @@ impl RenderPass {
             label,
             is_shadow,
             has_transparency,
+            write_depth,
         );
 
         Self { pipeline }
@@ -55,6 +57,7 @@ impl RenderPass {
         label: &str,
         is_shadow: bool,
         has_transparency: bool,
+        write_depth: bool,
     ) -> wgpu::RenderPipeline {
         let shader = device.create_shader_module(shader);
 
@@ -108,7 +111,7 @@ impl RenderPass {
             },
             depth_stencil: depth_format.map(|format| wgpu::DepthStencilState {
                 format,
-                depth_write_enabled: true,
+                depth_write_enabled: write_depth,
                 depth_compare: if is_shadow { wgpu::CompareFunction::LessEqual } else { wgpu::CompareFunction::Less },
                 stencil: wgpu::StencilState::default(),
                 bias: if is_shadow {
