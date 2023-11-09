@@ -21,6 +21,7 @@ impl RenderPass {
         is_shadow: bool,
         has_transparency: bool,
         write_depth: bool,
+        cull_mode: Option<wgpu::Face>,
     ) -> Self {
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some((label.to_owned() + " pipeline Layout").as_str()),
@@ -42,6 +43,7 @@ impl RenderPass {
             is_shadow,
             has_transparency,
             write_depth,
+            cull_mode,
         );
 
         Self { pipeline }
@@ -58,6 +60,7 @@ impl RenderPass {
         is_shadow: bool,
         has_transparency: bool,
         write_depth: bool,
+        cull_mode: Option<wgpu::Face>,
     ) -> wgpu::RenderPipeline {
         let shader = device.create_shader_module(shader);
 
@@ -101,7 +104,7 @@ impl RenderPass {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
+                cull_mode: cull_mode,
                 // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
                 polygon_mode: wgpu::PolygonMode::Fill,
                 // Requires Features::DEPTH_CLIP_CONTROL

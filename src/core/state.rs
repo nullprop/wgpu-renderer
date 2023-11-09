@@ -156,7 +156,7 @@ impl State {
             config.width,
             config.height,
             1,
-            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             true,
         );
 
@@ -445,6 +445,7 @@ impl State {
             true,
             false,
             true,
+            Some(wgpu::Face::Back),
         );
 
         let geometry_pass = RenderPass::new(
@@ -464,6 +465,7 @@ impl State {
             false,
             false,
             true,
+            Some(wgpu::Face::Back),
         );
 
         let light_debug_pass = RenderPass::new(
@@ -478,6 +480,7 @@ impl State {
             false,
             false,
             true,
+            Some(wgpu::Face::Back),
         );
 
         let fog_pass = RenderPass::new(
@@ -497,6 +500,7 @@ impl State {
             false,
             true,
             false,
+            Some(wgpu::Face::Back),
         );
 
         Self {
@@ -548,7 +552,7 @@ impl State {
                 self.config.width,
                 self.config.height,
                 1,
-                wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
                 true,
             );
         }
