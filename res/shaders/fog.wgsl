@@ -63,7 +63,7 @@ var s_roughness_metalness: sampler;
 fn fog_noise(pos: vec3<f32>) -> f32 {
     var p = pos * FOG_SCALE;
     p.x += global_uniforms.time * 0.01;
-    p.y += global_uniforms.time * 0.1;
+    p.y += global_uniforms.time * 0.2;
     p.z += sin(global_uniforms.time * 0.1) * 0.1;
     return fbm(p);
 }
@@ -112,12 +112,12 @@ fn fs_main(vert: FogVertexOutput) -> @location(0) vec4<f32> {
     let distance_to_volume = length(cam_to_volume);
     let direction = cam_to_volume / distance_to_volume;
     // FIXME: t_geometry_depth is 0
-//    let geometry_depth = scene_depth(vert.clip_position) - distance_to_volume;
-//    if (geometry_depth <= 0.0)
-//    {
-//        return vec4<f32>(0.0);
-//    }
-    let geometry_depth = 3000.0;
+    var geometry_depth = scene_depth(vert.clip_position) - distance_to_volume;
+    geometry_depth = 3000.0;
+    if (geometry_depth <= 0.0)
+    {
+        return vec4<f32>(0.0);
+    }
     let density = ray_march(vert.world_position.xyz, direction, geometry_depth);
 
     var in_light = 0.0;
@@ -149,16 +149,16 @@ fn fs_main(vert: FogVertexOutput) -> @location(0) vec4<f32> {
         in_light = 1.0;
     }
 
-    var color = vec3<f32>(0.5, 0.5, 0.5);
+    var base_color = vec3<f32>(mix(0.8, 0.4, density));
     let ambient_strength = 0.02;
-    let ambient_color = color * ambient_strength;
+    let ambient_color = base_color * ambient_strength;
 
     var radiance = vec3<f32>(0.0);
     if (in_light > 0.0) {
         // attenuation
         let light_dist = length(light.position - vert.world_position.xyz);
-        let coef_a = 0.0;
-        let coef_b = 1.0;
+        let coef_a = 2.0;
+        let coef_b = 4.0;
         let light_attenuation = 1.0 / (1.0 + coef_a * light_dist + coef_b * light_dist * light_dist);
 
         radiance = light.color.rgb * light.color.a * light_attenuation * in_light;
