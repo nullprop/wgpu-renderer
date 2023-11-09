@@ -1,10 +1,11 @@
-#include globals.wgsl
 #include constants.wgsl
+#include globals.wgsl
+#include light.wgsl
 #include noise.wgsl
 
 struct FogVertexOutput {
     @builtin(position) clip_position: vec4<f32>,
-    @location(0) world_position: vec3<f32>,
+    @location(0) world_position: vec4<f32>,
     @location(1) light_world_position: vec3<f32>,
 }
 
@@ -26,7 +27,7 @@ fn vs_main(
 
     var out: FogVertexOutput;
     out.clip_position = camera.proj * camera.view * world_position;
-    out.world_position = world_position.xyz / world_position.w;
+    out.world_position = world_position;
     out.light_world_position = light.position;
 
     return out;
@@ -72,9 +73,11 @@ fn ray_march(origin: vec3<f32>, direction: vec3<f32>, scene_depth: f32) -> f32 {
     var depth = 0.0;
     for (var i = 0; i < FOG_MAX_STEPS; i++)
     {
+        let noise = fog_noise(origin + direction * depth);
         depth += FOG_MAX_DIST / f32(FOG_MAX_STEPS);
-        let p = origin + direction * depth;
-        density += fog_noise(p) * FOG_DENSITY / f32(FOG_MAX_STEPS);
+        let blend = min(depth / FOG_BLEND_DIST, 1.0);
+        let contribution = FOG_DENSITY / f32(FOG_MAX_STEPS);
+        density += blend * noise * contribution;
         if (density >= 1.0)
         {
             density = 1.0;
@@ -88,7 +91,6 @@ fn ray_march(origin: vec3<f32>, direction: vec3<f32>, scene_depth: f32) -> f32 {
     return density;
 }
 
-// FIXME: always 0???
 fn scene_depth(clip_position: vec4<f32>) -> f32 {
     if (clip_position.w <= 0.0) {
         return 0.0;
@@ -96,24 +98,76 @@ fn scene_depth(clip_position: vec4<f32>) -> f32 {
 
     let ndc = clip_position.xy / clip_position.w;
     let uv = ndc * vec2<f32>(0.5, -0.5) + vec2<f32>(0.5, 0.5);
-    return textureSample(t_geometry_depth, s_geometry_depth, uv);
+    let depth = textureSample(t_geometry_depth, s_geometry_depth, uv);
+
+    // convert to linear [near, far] range
+    let z_near = camera.planes.x;
+    let z_far = camera.planes.y;
+    return z_near * z_far / (z_far + depth * (z_near - z_far));
 }
 
 @fragment
 fn fs_main(vert: FogVertexOutput) -> @location(0) vec4<f32> {
-    var color = vec4<f32>(0.5, 0.5, 0.5, 1.0);
-
     let cam_to_volume = vert.world_position.xyz - camera.position.xyz;
     let distance_to_volume = length(cam_to_volume);
     let direction = cam_to_volume / distance_to_volume;
-    // TODO: pass near and far plane in uniforms
-    let geometry_depth = scene_depth(vert.clip_position) * (3000.0 - 1.0) + 1.0 - distance_to_volume;
-    if (geometry_depth <= 0.0)
-    {
-        return vec4<f32>(0.0);
-    }
+    // FIXME: t_geometry_depth is 0
+//    let geometry_depth = scene_depth(vert.clip_position) - distance_to_volume;
+//    if (geometry_depth <= 0.0)
+//    {
+//        return vec4<f32>(0.0);
+//    }
+    let geometry_depth = 3000.0;
     let density = ray_march(vert.world_position.xyz, direction, geometry_depth);
-    color.a *= density;
 
-    return color;
+    var in_light = 0.0;
+    if (global_uniforms.use_shadowmaps > 0u) {
+        for (var i: i32 = 0; i < 6; i++) {
+            let light_coords = light.matrices[i] * vert.world_position;
+            let light_dir = normalize(light_coords.xyz);
+            let bias = 0.01;
+            // z can never be smaller than this inside 90 degree frustum
+            if (light_dir.z < INV_SQRT_3 - bias) {
+                continue;
+            }
+            // x and y can never be larger than this inside frustum
+            if (abs(light_dir.y) > INV_SQRT_2 + bias) {
+                continue;
+            }
+            if (abs(light_dir.x) > INV_SQRT_2 + bias) {
+                continue;
+            }
+
+            in_light = sample_direct_light(i, light_coords);
+            // TODO should break even if 0 since we're inside frustum.
+            // See if causes issues with bias overlap between directions.
+            if (in_light > 0.0) {
+                break;
+            }
+        }
+    } else {
+        in_light = 1.0;
+    }
+
+    var color = vec3<f32>(0.5, 0.5, 0.5);
+    let ambient_strength = 0.02;
+    let ambient_color = color * ambient_strength;
+
+    var radiance = vec3<f32>(0.0);
+    if (in_light > 0.0) {
+        // attenuation
+        let light_dist = length(light.position - vert.world_position.xyz);
+        let coef_a = 0.0;
+        let coef_b = 1.0;
+        let light_attenuation = 1.0 / (1.0 + coef_a * light_dist + coef_b * light_dist * light_dist);
+
+        radiance = light.color.rgb * light.color.a * light_attenuation * in_light;
+    }
+
+    var result = ambient_color + radiance;
+
+    // tonemap
+    result = result / (result + vec3(1.0));
+
+    return vec4(result, density * FOG_ALPHA);
 }

@@ -1,5 +1,4 @@
 use cgmath::prelude::*;
-use wgpu::{InstanceDescriptor, Backends, TextureView, TextureViewDescriptor, StoreOp};
 use std::default::Default;
 use std::mem;
 use std::time::Duration;
@@ -55,19 +54,18 @@ pub struct State {
     light_bind_group: wgpu::BindGroup,
     depth_bind_group: wgpu::BindGroup,
     light_depth_pass: RenderPass,
-    light_depth_texture_target_views: [TextureView; SHADOW_MAP_LAYERS as usize],
+    light_depth_texture_target_views: [wgpu::TextureView; SHADOW_MAP_LAYERS as usize],
     global_uniforms: GlobalUniforms,
     global_uniforms_buffer: wgpu::Buffer,
 }
 
 impl State {
-    // Creating some of the wgpu types requires async code
     pub async fn new(window: &Window) -> Self {
         log::info!("Creating surface");
         let mut size = window.inner_size();
         size.width = size.width.max(1);
         size.height = size.height.max(1);
-        let instance = wgpu::Instance::new(InstanceDescriptor { backends: Backends::PRIMARY | Backends::GL, ..Default::default() });
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor { backends: wgpu::Backends::PRIMARY | wgpu::Backends::GL, ..Default::default() });
         let surface = unsafe { instance.create_surface(window) }.unwrap();
 
         let adapter = instance
@@ -109,7 +107,6 @@ impl State {
 
         surface.configure(&device, &config);
 
-        // Camera
         let camera = Camera::new(
             (-500.0, 150.0, 0.0).into(),
             0.0,
@@ -155,14 +152,13 @@ impl State {
         let geometry_depth_texture = Texture::create_depth_texture(
             &device,
             "geometry_depth_texture",
-            Some(wgpu::CompareFunction::Less),
+            None,
             config.width,
             config.height,
             1,
-            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            true,
         );
-
-        let geometry_abs_depth_sampler = Texture::create_sampler(&device, None);
 
         let light_depth_texture = Texture::create_depth_texture(
             &device,
@@ -172,15 +168,16 @@ impl State {
             SHADOW_MAP_SIZE,
             SHADOW_MAP_LAYERS,
             wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            true,
         );
 
         let light_depth_texture_target_views = (0..SHADOW_MAP_LAYERS)
             .map(|i| {
-                light_depth_texture.texture.create_view(&TextureViewDescriptor {
+                light_depth_texture.texture.create_view(&wgpu::TextureViewDescriptor {
                     label: Some("light_depth_texture_view"),
                     format: None,
                     dimension: Some(wgpu::TextureViewDimension::D2),
-                    aspect: wgpu::TextureAspect::All,
+                    aspect: wgpu::TextureAspect::DepthOnly,
                     base_mip_level: 0,
                     mip_level_count: None,
                     base_array_layer: i,
@@ -193,7 +190,6 @@ impl State {
 
         let light_uniform = LightUniform::new([0.0, 0.0, 0.0], [1.0, 1.0, 1.0, 250000.0]);
 
-        // We'll want to update our lights position, so we use COPY_DST
         let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Light UB"),
             contents: bytemuck::cast_slice(&[light_uniform]),
@@ -316,7 +312,7 @@ impl State {
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: wgpu::BindingResource::Sampler(&geometry_abs_depth_sampler),
+                    resource: wgpu::BindingResource::Sampler(&geometry_depth_texture.sampler),
                 },
             ],
             label: Some("Depth Bind Group"),
@@ -448,6 +444,7 @@ impl State {
             "light depth pass",
             true,
             false,
+            true,
         );
 
         let geometry_pass = RenderPass::new(
@@ -466,6 +463,21 @@ impl State {
             "geometry pass",
             false,
             false,
+            true,
+        );
+
+        let light_debug_pass = RenderPass::new(
+            &device,
+            &[&camera_bind_group_layout, &light_bind_group_layout],
+            &[],
+            "light_debug.wgsl",
+            Some(config.format),
+            Some(Texture::DEPTH_FORMAT),
+            &[ModelVertex::desc()],
+            "light debug pass",
+            false,
+            false,
+            true,
         );
 
         let fog_pass = RenderPass::new(
@@ -484,18 +496,6 @@ impl State {
             "fog pass",
             false,
             true,
-        );
-
-        let light_debug_pass = RenderPass::new(
-            &device,
-            &[&camera_bind_group_layout, &light_bind_group_layout],
-            &[],
-            "light.wgsl",
-            Some(config.format),
-            Some(Texture::DEPTH_FORMAT),
-            &[ModelVertex::desc()],
-            "light debug pass",
-            false,
             false,
         );
 
@@ -544,11 +544,12 @@ impl State {
             self.geometry_depth_texture = Texture::create_depth_texture(
                 &self.device,
                 "geometry_depth_texture",
-                Some(wgpu::CompareFunction::Less),
+                None,
                 self.config.width,
                 self.config.height,
                 1,
-                wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                true,
             );
         }
     }
@@ -620,7 +621,7 @@ impl State {
                             view: &self.light_depth_texture_target_views[i],
                             depth_ops: Some(wgpu::Operations {
                                 load: wgpu::LoadOp::Clear(1.0),
-                                store: StoreOp::Store,
+                                store: wgpu::StoreOp::Store,
                             }),
                             stencil_ops: None,
                         }),
@@ -645,15 +646,15 @@ impl State {
         let surface_view = surface_texture
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
-        let mut encoder = self
+        let mut geometry_encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
 
-        encoder.push_debug_group("geometry pass");
+        geometry_encoder.push_debug_group("geometry pass");
         {
-            let mut geom_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut geom_render_pass = geometry_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Geometry Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &surface_view,
@@ -665,14 +666,14 @@ impl State {
                             b: 0.0,
                             a: 1.0,
                         }),
-                        store: StoreOp::Store,
+                        store: wgpu::StoreOp::Store,
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &self.geometry_depth_texture.view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
-                        store: StoreOp::Store,
+                        store: wgpu::StoreOp::Store,
                     }),
                     stencil_ops: None,
                 }),
@@ -688,26 +689,26 @@ impl State {
                 [&self.camera_bind_group, &self.light_bind_group, &self.depth_bind_group].into(),
             );
         }
-        encoder.pop_debug_group();
+        geometry_encoder.pop_debug_group();
 
-        encoder.push_debug_group("debug light pass");
+        geometry_encoder.push_debug_group("debug light pass");
         {
             let mut light_debug_render_pass =
-                encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                geometry_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Light Debug Render Pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: &surface_view,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Load,
-                            store: StoreOp::Store,
+                            store: wgpu::StoreOp::Store,
                         },
                     })],
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                         view: &self.geometry_depth_texture.view,
                         depth_ops: Some(wgpu::Operations {
                             load: wgpu::LoadOp::Load,
-                            store: StoreOp::Store,
+                            store: wgpu::StoreOp::Store,
                         }),
                         stencil_ops: None,
                     }),
@@ -722,26 +723,31 @@ impl State {
                 &self.light_bind_group,
             );
         }
-        encoder.pop_debug_group();
+        geometry_encoder.pop_debug_group();
 
-        encoder.push_debug_group("fog pass");
+        self.queue.submit(std::iter::once(geometry_encoder.finish()));
+
+        let mut fog_encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Fog Encoder"),
+            });
+
+        fog_encoder.push_debug_group("fog pass");
         {
-            let mut fog_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut fog_render_pass = fog_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Fog Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &surface_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
-                        store: StoreOp::Store,
+                        store: wgpu::StoreOp::Store,
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &self.geometry_depth_texture.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: StoreOp::Store,
-                    }),
+                    depth_ops: None,
                     stencil_ops: None,
                 }),
                 timestamp_writes: None,
@@ -756,9 +762,10 @@ impl State {
                 [&self.camera_bind_group, &self.light_bind_group, &self.depth_bind_group].into(),
             );
         }
-        encoder.pop_debug_group();
+        fog_encoder.pop_debug_group();
 
-        self.queue.submit(std::iter::once(encoder.finish()));
+        self.queue.submit(std::iter::once(fog_encoder.finish()));
+
         surface_texture.present();
 
         Ok(())

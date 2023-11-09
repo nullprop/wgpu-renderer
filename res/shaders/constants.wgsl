@@ -9,3 +9,5 @@ const FOG_MAX_STEPS = 20;
 const FOG_MAX_DIST = 300.0;
 const FOG_SCALE = 0.01;
 const FOG_DENSITY = 1.0;
+const FOG_ALPHA = 1.0;
+const FOG_BLEND_DIST = 10.0;

@@ -108,6 +108,7 @@ pub struct CameraUniform {
     pub proj: [[f32; 4]; 4],
     pub inv_view_proj: [[f32; 4]; 4],
     pub position: [f32; 4],
+    pub planes: [f32; 4],
 }
 
 impl CameraUniform {
@@ -117,6 +118,7 @@ impl CameraUniform {
             proj: cgmath::Matrix4::identity().into(),
             inv_view_proj: cgmath::Matrix4::identity().into(),
             position: [0.0; 4],
+            planes: [NEAR_PLANE, FAR_PLANE, 0.0, 0.0],
         }
     }
 
