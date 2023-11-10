@@ -45,7 +45,6 @@ pub struct State {
     fog_instances: Vec<Instance>,
     fog_instance_buffer: wgpu::Buffer,
     geometry_depth_texture: Texture,
-    light_depth_texture: Texture,
     geom_model: Model,
     fog_model: Model,
     light_model: Model,
@@ -118,7 +117,7 @@ impl State {
         );
 
         let mut camera_uniform = CameraUniform::new();
-        camera_uniform.update(&camera);
+        camera_uniform.update(&camera, &config);
 
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
@@ -500,7 +499,6 @@ impl State {
             fog_instances,
             fog_instance_buffer,
             geometry_depth_texture,
-            light_depth_texture,
             geom_model,
             fog_model,
             light_model,
@@ -575,7 +573,7 @@ impl State {
         // Update camera
         self.camera.update(dt, &self.camera_controller);
         self.camera_controller.reset(false);
-        self.camera_uniform.update(&self.camera);
+        self.camera_uniform.update(&self.camera, &self.config);
         self.queue.write_buffer(
             &self.camera_buffer,
             0,
