@@ -15,7 +15,7 @@ struct Light {
     color: vec4<f32>,
     matrices: array<mat4x4<f32>, 6>,
 }
-@group(1) @binding(0)
+@group(0) @binding(1)
 var<uniform> light: Light;
 
 struct GlobalUniforms {
@@ -24,7 +24,7 @@ struct GlobalUniforms {
     use_shadowmaps: u32,
     _padding: u32,
 }
-@group(1) @binding(1)
+@group(0) @binding(2)
 var<uniform> global_uniforms: GlobalUniforms;
 
 struct VertexInput {

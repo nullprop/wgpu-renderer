@@ -38,21 +38,23 @@ pub struct State {
     camera: Camera,
     camera_uniform: CameraUniform,
     camera_buffer: wgpu::Buffer,
-    camera_bind_group: wgpu::BindGroup,
+    global_bind_group: wgpu::BindGroup,
     camera_controller: CameraController,
     geom_instances: Vec<Instance>,
     geom_instance_buffer: wgpu::Buffer,
     fog_instances: Vec<Instance>,
     fog_instance_buffer: wgpu::Buffer,
     geometry_depth_texture: Texture,
+    light_depth_texture: Texture,
     geom_model: Model,
     fog_model: Model,
     light_model: Model,
     light_uniform: LightUniform,
     light_buffer: wgpu::Buffer,
     light_debug_pass: RenderPass,
-    light_bind_group: wgpu::BindGroup,
-    depth_bind_group: wgpu::BindGroup,
+    light_depth_bind_group: wgpu::BindGroup,
+    geometry_depth_bind_group: wgpu::BindGroup,
+    geometry_depth_bind_group_layout: wgpu::BindGroupLayout,
     light_depth_pass: RenderPass,
     light_depth_texture_target_views: [wgpu::TextureView; SHADOW_MAP_LAYERS as usize],
     global_uniforms: GlobalUniforms,
@@ -124,41 +126,87 @@ impl State {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
         let camera_uniform_size = mem::size_of::<CameraUniform>() as u64;
-        let camera_bind_group_layout =
+
+        let light_uniform = LightUniform::new([0.0, 0.0, 0.0], [1.0, 1.0, 1.0, 250000.0]);
+        let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Light UB"),
+            contents: bytemuck::cast_slice(&[light_uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+        let light_uniform_size = mem::size_of::<LightUniform>() as u64;
+
+        let global_uniforms = GlobalUniforms::default();
+        let global_uniforms_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Light Matrix UB"),
+            contents: bytemuck::cast_slice(&[global_uniforms]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+        let global_uniform_size = mem::size_of::<GlobalUniforms>() as u64;
+
+        let global_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(camera_uniform_size),
+                entries: &[
+                    // CameraUniform
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(camera_uniform_size),
+                        },
+                        count: None,
                     },
-                    count: None,
-                }],
+                    // LightUniform
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(light_uniform_size),
+                        },
+                        count: None,
+                    },
+                    // global_uniforms
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(global_uniform_size),
+                        },
+                        count: None,
+                    },
+                ],
                 label: Some("camera_bind_group_layout"),
             });
         let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &camera_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: camera_buffer.as_entire_binding(),
-            }],
+            layout: &global_bind_group_layout,
+            entries: &[
+                // CameraUniform
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: camera_buffer.as_entire_binding(),
+                },
+                // light struct
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: light_buffer.as_entire_binding(),
+                },
+                // global_uniforms
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: global_uniforms_buffer.as_entire_binding(),
+                }
+            ],
             label: Some("camera_bind_group"),
         });
 
         let camera_controller = CameraController::new(400.0, 2.0);
 
-        let geometry_depth_texture = Texture::create_depth_texture(
-            &device,
-            "geometry_depth_texture",
-            None,
-            config.width,
-            config.height,
-            1,
-            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-            true,
-        );
+        let geometry_depth_texture = State::create_geometry_depth_texture(&device, &config);
 
         let light_depth_texture = Texture::create_depth_texture(
             &device,
@@ -188,71 +236,7 @@ impl State {
             .try_into()
             .expect("failed to create light depth texture views");
 
-        let light_uniform = LightUniform::new([0.0, 0.0, 0.0], [1.0, 1.0, 1.0, 250000.0]);
-
-        let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Light UB"),
-            contents: bytemuck::cast_slice(&[light_uniform]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        let global_uniforms = GlobalUniforms::default();
-        let global_uniforms_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Light Matrix UB"),
-            contents: bytemuck::cast_slice(&[global_uniforms]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        let light_uniform_size = mem::size_of::<LightUniform>() as u64;
-        let light_matrix_uniform_size = mem::size_of::<GlobalUniforms>() as u64;
-        let light_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[
-                    // LightUniform
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: wgpu::BufferSize::new(light_uniform_size),
-                        },
-                        count: None,
-                    },
-                    // matrix index, use shadowmaps
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        // TODO: remove fragment vis once no shadowmap uniform
-                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: wgpu::BufferSize::new(light_matrix_uniform_size),
-                        },
-                        count: None,
-                    },
-                ],
-                label: Some("Light Bind Group Layout"),
-            });
-
-        let light_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &light_bind_group_layout,
-            entries: &[
-                // light struct
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: light_buffer.as_entire_binding(),
-                },
-                // matrix index
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: global_uniforms_buffer.as_entire_binding(),
-                },
-            ],
-            label: Some("Light Bind Group"),
-        });
-
-        let depth_bind_group_layout =
+        let light_depth_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
                     // light cubemap
@@ -272,29 +256,12 @@ impl State {
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
                         count: None,
                     },
-                    // geometry depth
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Depth,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
                 ],
-                label: Some("Depth Bind Group Layout"),
+                label: Some("Light Bind Group Layout"),
             });
 
-        let depth_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &depth_bind_group_layout,
+        let light_depth_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &light_depth_bind_group_layout,
             entries: &[
                 // light cubemap
                 wgpu::BindGroupEntry {
@@ -305,20 +272,35 @@ impl State {
                     binding: 1,
                     resource: wgpu::BindingResource::Sampler(&light_depth_texture.sampler),
                 },
-                // geometry depth
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&geometry_depth_texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::Sampler(&geometry_depth_texture.sampler),
-                },
             ],
-            label: Some("Depth Bind Group"),
+            label: Some("Light Bind Group"),
         });
 
-        surface.configure(&device, &config);
+        let geometry_depth_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    // geometry depth
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Depth,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+                label: Some("Depth Bind Group Layout"),
+            });
+
+        let geometry_depth_bind_group = State::create_geometry_depth_bind_group(&device, &geometry_depth_bind_group_layout, &geometry_depth_texture);
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -433,8 +415,7 @@ impl State {
         let light_depth_pass = RenderPass::new(
             &device,
             &[
-                &camera_bind_group_layout,
-                &light_bind_group_layout,
+                &global_bind_group_layout,
             ],
             &[],
             "depth.wgsl",
@@ -451,9 +432,8 @@ impl State {
         let geometry_pass = RenderPass::new(
             &device,
             &[
-                &camera_bind_group_layout,
-                &light_bind_group_layout,
-                &depth_bind_group_layout,
+                &global_bind_group_layout,
+                &light_depth_bind_group_layout,
                 &texture_bind_group_layout,
             ],
             &[],
@@ -470,7 +450,7 @@ impl State {
 
         let light_debug_pass = RenderPass::new(
             &device,
-            &[&camera_bind_group_layout, &light_bind_group_layout],
+            &[&global_bind_group_layout],
             &[],
             "light_debug.wgsl",
             Some(config.format),
@@ -486,10 +466,9 @@ impl State {
         let fog_pass = RenderPass::new(
             &device,
             &[
-                &camera_bind_group_layout,
-                &light_bind_group_layout,
-                &depth_bind_group_layout,
-                &texture_bind_group_layout,
+                &global_bind_group_layout,
+                &light_depth_bind_group_layout,
+                &geometry_depth_bind_group_layout,
             ],
             &[],
             "fog.wgsl",
@@ -514,26 +493,59 @@ impl State {
             camera,
             camera_uniform,
             camera_buffer,
-            camera_bind_group,
+            global_bind_group: camera_bind_group,
             camera_controller,
             geom_instances,
             geom_instance_buffer,
             fog_instances,
             fog_instance_buffer,
             geometry_depth_texture,
+            light_depth_texture,
             geom_model,
             fog_model,
             light_model,
             light_uniform,
             light_buffer,
             light_debug_pass,
-            light_bind_group,
-            depth_bind_group,
+            light_depth_bind_group,
+            geometry_depth_bind_group,
+            geometry_depth_bind_group_layout,
             light_depth_pass,
             light_depth_texture_target_views,
             global_uniforms,
             global_uniforms_buffer,
         }
+    }
+
+    pub fn create_geometry_depth_bind_group(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, geometry_depth_texture: &Texture) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: layout,
+            entries: &[
+                // geometry depth
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&geometry_depth_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&geometry_depth_texture.sampler),
+                },
+            ],
+            label: Some("Depth Bind Group"),
+        })
+    }
+
+    fn create_geometry_depth_texture(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Texture {
+        Texture::create_depth_texture(
+            &device,
+            "geometry_depth_texture",
+            None,
+            config.width,
+            config.height,
+            1,
+            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            true,
+        )
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -545,16 +557,8 @@ impl State {
             self.camera
                 .projection
                 .resize(new_size.width, new_size.height);
-            self.geometry_depth_texture = Texture::create_depth_texture(
-                &self.device,
-                "geometry_depth_texture",
-                None,
-                self.config.width,
-                self.config.height,
-                1,
-                wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-                true,
-            );
+            self.geometry_depth_texture = State::create_geometry_depth_texture(&self.device, &self.config);
+            self.geometry_depth_bind_group = State::create_geometry_depth_bind_group(&self.device, &self.geometry_depth_bind_group_layout, &self.geometry_depth_texture);
         }
     }
 
@@ -638,7 +642,8 @@ impl State {
                 light_depth_render_pass.draw_model_instanced(
                     &self.geom_model,
                     0..self.geom_instances.len() as u32,
-                    [&self.camera_bind_group, &self.light_bind_group].into(),
+                    [&self.global_bind_group].into(),
+                    false,
                 );
             }
 
@@ -690,7 +695,8 @@ impl State {
             geom_render_pass.draw_model_instanced(
                 &self.geom_model,
                 0..self.geom_instances.len() as u32,
-                [&self.camera_bind_group, &self.light_bind_group, &self.depth_bind_group].into(),
+                [&self.global_bind_group, &self.light_depth_bind_group].into(),
+                true,
             );
         }
         geometry_encoder.pop_debug_group();
@@ -723,8 +729,7 @@ impl State {
             light_debug_render_pass.set_pipeline(&self.light_debug_pass.pipeline);
             light_debug_render_pass.draw_light_model(
                 &self.light_model,
-                &self.camera_bind_group,
-                &self.light_bind_group,
+                &self.global_bind_group,
             );
         }
         geometry_encoder.pop_debug_group();
@@ -763,7 +768,8 @@ impl State {
             fog_render_pass.draw_model_instanced(
                 &self.fog_model,
                 0..self.fog_instances.len() as u32,
-                [&self.camera_bind_group, &self.light_bind_group, &self.depth_bind_group].into(),
+                [&self.global_bind_group, &self.light_depth_bind_group, &self.geometry_depth_bind_group].into(),
+                false,
             );
         }
         fog_encoder.pop_debug_group();

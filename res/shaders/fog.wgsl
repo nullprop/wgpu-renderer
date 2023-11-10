@@ -35,30 +35,15 @@ fn vs_main(
 
 // Fragment shader
 
-@group(2)@binding(0)
+@group(1) @binding(0)
 var t_light_depth: texture_depth_2d_array;
-@group(2) @binding(1)
+@group(1) @binding(1)
 var s_light_depth: sampler_comparison;
 
-@group(2)@binding(2)
+@group(2) @binding(0)
 var t_geometry_depth: texture_depth_2d;
-@group(2) @binding(3)
+@group(2) @binding(1)
 var s_geometry_depth: sampler;
-
-@group(3) @binding(0)
-var t_diffuse: texture_2d<f32>;
-@group(3)@binding(1)
-var s_diffuse: sampler;
-
-@group(3)@binding(2)
-var t_normal: texture_2d<f32>;
-@group(3) @binding(3)
-var s_normal: sampler;
-
-@group(3)@binding(4)
-var t_roughness_metalness: texture_2d<f32>;
-@group(3) @binding(5)
-var s_roughness_metalness: sampler;
 
 fn fog_noise(pos: vec3<f32>) -> f32 {
     var p = pos * FOG_SCALE;
@@ -91,15 +76,7 @@ fn ray_march(origin: vec3<f32>, direction: vec3<f32>, scene_depth: f32) -> f32 {
     return density;
 }
 
-fn scene_depth(clip_position: vec4<f32>) -> f32 {
-    if (clip_position.w <= 0.0) {
-        return 0.0;
-    }
-
-    let ndc = clip_position.xy / clip_position.w;
-    let uv = ndc * vec2<f32>(0.5, -0.5) + vec2<f32>(0.5, 0.5);
-    let depth = textureSample(t_geometry_depth, s_geometry_depth, uv);
-
+fn depth_to_linear(depth: f32) -> f32 {
     // convert to linear [near, far] range
     let z_near = camera.planes.x;
     let z_far = camera.planes.y;
@@ -109,15 +86,21 @@ fn scene_depth(clip_position: vec4<f32>) -> f32 {
 @fragment
 fn fs_main(vert: FogVertexOutput) -> @location(0) vec4<f32> {
     let cam_to_volume = vert.world_position.xyz - camera.position.xyz;
-    let distance_to_volume = length(cam_to_volume);
+    var distance_to_volume = length(cam_to_volume);
     let direction = cam_to_volume / distance_to_volume;
-    // FIXME: t_geometry_depth is 0
-    var geometry_depth = scene_depth(vert.clip_position) - distance_to_volume;
-    geometry_depth = 3000.0;
+    // FIXME: geom depth should always be greater than the volume surface depth...
+    // why is this broken?
+    distance_to_volume = depth_to_linear(vert.clip_position.z);
+    let uv = vert.clip_position.xy / camera.planes.xy;
+    let depth = textureSample(t_geometry_depth, s_geometry_depth, uv);
+    let geometry_depth = depth_to_linear(depth) - distance_to_volume;
     if (geometry_depth <= 0.0)
     {
         return vec4<f32>(0.0);
     }
+    return vec4<f32>(1.0);
+
+    /*
     let density = ray_march(vert.world_position.xyz, direction, geometry_depth);
 
     var in_light = 0.0;
@@ -170,4 +153,5 @@ fn fs_main(vert: FogVertexOutput) -> @location(0) vec4<f32> {
     result = result / (result + vec3(1.0));
 
     return vec4(result, density * FOG_ALPHA);
+    */
 }
