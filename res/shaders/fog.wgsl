@@ -46,11 +46,19 @@ var t_geometry_depth: texture_depth_2d;
 var s_geometry_depth: sampler;
 
 fn fog_noise(pos: vec3<f32>) -> f32 {
-    var p = pos * FOG_SCALE;
-    p.x += global_uniforms.time * 0.1;
-    p.y += global_uniforms.time * 0.2;
-    p.z += sin(global_uniforms.time * 0.1) * 0.2;
-    return fbm(p);
+    var p1 = pos * 0.01;
+    p1.x += global_uniforms.time * 0.2;
+    p1.y += global_uniforms.time * 0.2;
+    p1.z += sin(global_uniforms.time * 0.1) * 0.5;
+    let noise1 = fbm(p1);
+
+    var p2 = pos * 0.05;
+    p2.x += global_uniforms.time * 0.2;
+    p2.y += global_uniforms.time * 0.2;
+    p2.z += sin(global_uniforms.time * 0.1) * 0.5;
+    let noise2 = fbm(p2);
+
+    return 0.8 * noise1 + 0.2 * noise2;
 }
 
 fn ray_march(origin: vec3<f32>, direction: vec3<f32>, scene_depth: f32) -> f32 {

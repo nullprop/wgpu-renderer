@@ -7,7 +7,6 @@ const SHADOW_SAMPLES = 2;
 const INV_SHADOW_SAMPLES = 1.0 / 25.0;
 const FOG_MAX_STEPS = 30;
 const FOG_STEP_SIZE = 5.0;
-const FOG_SCALE = 0.01;
 const FOG_DENSITY = 2.0;
 const FOG_ALPHA = 1.0;
 const FOG_BLEND_STEPS = 4;

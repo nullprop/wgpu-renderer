@@ -400,9 +400,9 @@ impl State {
         });
 
         let fog_instances = vec![Instance {
-            position: [0.0, 20.0, 0.0].into(),
+            position: [0.0, 30.0, 0.0].into(),
             rotation: cgmath::Quaternion::one(),
-            scale: [1360.0, 20.0, 600.0].into(),
+            scale: [1360.0, 30.0, 600.0].into(),
         }];
         let fog_instance_data = fog_instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
         let fog_instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
