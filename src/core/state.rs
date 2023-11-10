@@ -517,7 +517,7 @@ impl State {
 
     pub fn create_geometry_depth_bind_group(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, geometry_depth_texture: &Texture) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: layout,
+            layout,
             entries: &[
                 // geometry depth
                 wgpu::BindGroupEntry {
@@ -535,7 +535,7 @@ impl State {
 
     fn create_geometry_depth_texture(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Texture {
         Texture::create_depth_texture(
-            &device,
+            device,
             "geometry_depth_texture",
             None,
             config.width,
