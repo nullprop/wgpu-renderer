@@ -107,40 +107,12 @@ fn fs_main(vert: FogVertexOutput) -> @location(0) vec4<f32> {
     let fog_density = dd.x;
     let fog_depth = dd.y;
 
-    var in_light = 0.0;
-    if (global_uniforms.use_shadowmaps > 0u) {
-        for (var i: i32 = 0; i < 6; i++) {
-            let light_coords = light.matrices[i] * vert.world_position;
-            let light_dir = normalize(light_coords.xyz);
-            let bias = 0.01;
-            // z can never be smaller than this inside 90 degree frustum
-            if (light_dir.z < INV_SQRT_3 - bias) {
-                continue;
-            }
-            // x and y can never be larger than this inside frustum
-            if (abs(light_dir.y) > INV_SQRT_2 + bias) {
-                continue;
-            }
-            if (abs(light_dir.x) > INV_SQRT_2 + bias) {
-                continue;
-            }
-
-            in_light = sample_direct_light(i, light_coords);
-            // TODO should break even if 0 since we're inside frustum.
-            // See if causes issues with bias overlap between directions.
-            if (in_light > 0.0) {
-                break;
-            }
-        }
-    } else {
-        in_light = 1.0;
-    }
-
     var base_color = vec3<f32>(mix(0.5, 0.1, fog_density));
     let ambient_strength = 0.04;
     let ambient_color = base_color * ambient_strength;
 
     var radiance = vec3<f32>(0.0);
+    let in_light = sample_direct_light(vert.world_position);
     if (in_light > 0.0) {
         // attenuation
         let fog_position = vert.world_position.xyz + direction * fog_depth;

@@ -82,39 +82,7 @@ fn fs_main(vert: VertexOutput) -> @location(0) vec4<f32> {
     
     var total_radiance: vec3<f32>;
 
-    var in_light = 0.0;
-
-    // Depth sampling is broken in WebGL...
-    // TODO: remove once WebGPU
-    if (global_uniforms.use_shadowmaps > 0u) {
-        for (var i: i32 = 0; i < 6; i++) {
-            let light_coords = light.matrices[i] * vert.world_position;
-
-            let light_dir = normalize(light_coords.xyz);
-            let bias = 0.01;
-            // z can never be smaller than this inside 90 degree frustum
-            if (light_dir.z < INV_SQRT_3 - bias) {
-                continue;
-            }
-            // x and y can never be larger than this inside frustum
-            if (abs(light_dir.y) > INV_SQRT_2 + bias) {
-                continue;
-            }
-            if (abs(light_dir.x) > INV_SQRT_2 + bias) {
-                continue;
-            }
-
-            in_light = sample_direct_light(i, light_coords);
-            // TODO should break even if 0 since we're inside frustum.
-            // See if causes issues with bias overlap between directions.
-            if (in_light > 0.0) {
-                break;
-            }
-        }
-    } else {
-        in_light = 1.0;
-    }
-
+    let in_light = sample_direct_light(vert.world_position);
     if (in_light > 0.0) {
         // lighting vecs
         let normal_dir = object_normal.xyz * 2.0 - 1.0;
