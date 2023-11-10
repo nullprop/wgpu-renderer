@@ -69,6 +69,7 @@ pub trait DrawModel<'a> {
         mesh: &'a Mesh,
         material: &'a Material,
         bind_groups: Vec<&'a wgpu::BindGroup>,
+        add_texture_binds: bool,
     );
     fn draw_mesh_instanced(
         &mut self,
@@ -76,18 +77,21 @@ pub trait DrawModel<'a> {
         material: &'a Material,
         instances: Range<u32>,
         bind_groups: Vec<&'a wgpu::BindGroup>,
+        add_texture_binds: bool,
     );
 
     fn draw_model(
         &mut self,
         model: &'a Model,
         bind_groups: Vec<&'a wgpu::BindGroup>,
+        add_texture_binds: bool,
     );
     fn draw_model_instanced(
         &mut self,
         model: &'a Model,
         instances: Range<u32>,
         bind_groups: Vec<&'a wgpu::BindGroup>,
+        add_texture_binds: bool,
     );
 }
 
@@ -100,8 +104,9 @@ impl<'a, 'b> DrawModel<'b> for wgpu::RenderPass<'a>
         mesh: &'b Mesh,
         material: &'b Material,
         bind_groups: Vec<&'a wgpu::BindGroup>,
+        add_texture_binds: bool,
     ) {
-        self.draw_mesh_instanced(mesh, material, 0..1, bind_groups);
+        self.draw_mesh_instanced(mesh, material, 0..1, bind_groups, add_texture_binds);
     }
 
     fn draw_mesh_instanced(
@@ -110,13 +115,16 @@ impl<'a, 'b> DrawModel<'b> for wgpu::RenderPass<'a>
         material: &'b Material,
         instances: Range<u32>,
         bind_groups: Vec<&'a wgpu::BindGroup>,
+        add_texture_binds: bool,
     ) {
         self.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
         self.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         for (i, group) in bind_groups.iter().enumerate() {
             self.set_bind_group(i as u32, group, &[]);
         }
-        self.set_bind_group(bind_groups.len() as u32, &material.bind_group, &[]);
+        if add_texture_binds {
+            self.set_bind_group(bind_groups.len() as u32, &material.bind_group, &[]);
+        }
         self.draw_indexed(0..mesh.num_elements, 0, instances);
     }
 
@@ -124,8 +132,9 @@ impl<'a, 'b> DrawModel<'b> for wgpu::RenderPass<'a>
         &mut self,
         model: &'b Model,
         bind_groups: Vec<&'a wgpu::BindGroup>,
+        add_texture_binds: bool,
     ) {
-        self.draw_model_instanced(model, 0..1, bind_groups);
+        self.draw_model_instanced(model, 0..1, bind_groups, add_texture_binds);
     }
 
     fn draw_model_instanced(
@@ -133,6 +142,7 @@ impl<'a, 'b> DrawModel<'b> for wgpu::RenderPass<'a>
         model: &'b Model,
         instances: Range<u32>,
         bind_groups: Vec<&'a wgpu::BindGroup>,
+        add_texture_binds: bool,
     ) {
         for mesh in &model.meshes {
             let material = &model.materials[mesh.material];
@@ -141,6 +151,7 @@ impl<'a, 'b> DrawModel<'b> for wgpu::RenderPass<'a>
                 material,
                 instances.clone(),
                 bind_groups.clone(),
+                add_texture_binds,
             );
         }
     }

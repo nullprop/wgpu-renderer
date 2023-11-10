@@ -47,24 +47,24 @@ fn vs_main(
 
 // Fragment shader
 
-@group(2)@binding(0)
+@group(1) @binding(0)
 var t_light_depth: texture_depth_2d_array;
-@group(2) @binding(1)
+@group(1) @binding(1)
 var s_light_depth: sampler_comparison;
 
-@group(3) @binding(0)
+@group(2) @binding(0)
 var t_diffuse: texture_2d<f32>;
-@group(3)@binding(1)
+@group(2) @binding(1)
 var s_diffuse: sampler;
 
-@group(3)@binding(2)
+@group(2) @binding(2)
 var t_normal: texture_2d<f32>;
-@group(3) @binding(3)
+@group(2) @binding(3)
 var s_normal: sampler;
 
-@group(3)@binding(4)
+@group(2) @binding(4)
 var t_roughness_metalness: texture_2d<f32>;
-@group(3) @binding(5)
+@group(2) @binding(5)
 var s_roughness_metalness: sampler;
 
 @fragment
