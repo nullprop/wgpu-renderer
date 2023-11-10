@@ -34,6 +34,7 @@ pub struct State {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     geometry_pass: RenderPass,
+    #[cfg(not(target_arch = "wasm32"))]
     fog_pass: RenderPass,
     camera: Camera,
     camera_uniform: CameraUniform,
@@ -42,10 +43,13 @@ pub struct State {
     camera_controller: CameraController,
     geom_instances: Vec<Instance>,
     geom_instance_buffer: wgpu::Buffer,
+    #[cfg(not(target_arch = "wasm32"))]
     fog_instances: Vec<Instance>,
+    #[cfg(not(target_arch = "wasm32"))]
     fog_instance_buffer: wgpu::Buffer,
     geometry_depth_texture: Texture,
     geom_model: Model,
+    #[cfg(not(target_arch = "wasm32"))]
     fog_model: Model,
     light_model: Model,
     light_uniform: LightUniform,
@@ -368,6 +372,7 @@ impl State {
             .await
             .unwrap();
 
+        #[cfg(not(target_arch = "wasm32"))]
         let fog_model = resources::load_model_gltf(
             "models/Cube.glb",
             &device,
@@ -399,12 +404,15 @@ impl State {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
+        #[cfg(not(target_arch = "wasm32"))]
         let fog_instances = vec![Instance {
             position: [0.0, 30.0, 0.0].into(),
             rotation: cgmath::Quaternion::one(),
             scale: [1360.0, 30.0, 600.0].into(),
         }];
+        #[cfg(not(target_arch = "wasm32"))]
         let fog_instance_data = fog_instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
+        #[cfg(not(target_arch = "wasm32"))]
         let fog_instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Fog Instance Buffer"),
             contents: bytemuck::cast_slice(&fog_instance_data),
@@ -462,6 +470,7 @@ impl State {
             Some(wgpu::Face::Back),
         );
 
+        #[cfg(not(target_arch = "wasm32"))]
         let fog_pass = RenderPass::new(
             &device,
             &[
@@ -488,6 +497,7 @@ impl State {
             queue,
             config,
             geometry_pass,
+            #[cfg(not(target_arch = "wasm32"))]
             fog_pass,
             camera,
             camera_uniform,
@@ -496,10 +506,13 @@ impl State {
             camera_controller,
             geom_instances,
             geom_instance_buffer,
+            #[cfg(not(target_arch = "wasm32"))]
             fog_instances,
+            #[cfg(not(target_arch = "wasm32"))]
             fog_instance_buffer,
             geometry_depth_texture,
             geom_model,
+            #[cfg(not(target_arch = "wasm32"))]
             fog_model,
             light_model,
             light_uniform,
@@ -734,45 +747,48 @@ impl State {
 
         self.queue.submit(std::iter::once(geometry_encoder.finish()));
 
-        let mut fog_encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Fog Encoder"),
-            });
-
-        fog_encoder.push_debug_group("fog pass");
+        #[cfg(not(target_arch = "wasm32"))]
         {
-            let mut fog_render_pass = fog_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Fog Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &surface_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.geometry_depth_texture.view,
-                    depth_ops: None,
-                    stencil_ops: None,
-                }),
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
+            let mut fog_encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Fog Encoder"),
+                });
 
-            fog_render_pass.set_vertex_buffer(1, self.fog_instance_buffer.slice(..));
-            fog_render_pass.set_pipeline(&self.fog_pass.pipeline);
-            fog_render_pass.draw_model_instanced(
-                &self.fog_model,
-                0..self.fog_instances.len() as u32,
-                [&self.global_bind_group, &self.light_depth_bind_group, &self.geometry_depth_bind_group].into(),
-                false,
-            );
+            fog_encoder.push_debug_group("fog pass");
+            {
+                let mut fog_render_pass = fog_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Fog Render Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &surface_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &self.geometry_depth_texture.view,
+                        depth_ops: None,
+                        stencil_ops: None,
+                    }),
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                });
+
+                fog_render_pass.set_vertex_buffer(1, self.fog_instance_buffer.slice(..));
+                fog_render_pass.set_pipeline(&self.fog_pass.pipeline);
+                fog_render_pass.draw_model_instanced(
+                    &self.fog_model,
+                    0..self.fog_instances.len() as u32,
+                    [&self.global_bind_group, &self.light_depth_bind_group, &self.geometry_depth_bind_group].into(),
+                    false,
+                );
+            }
+            fog_encoder.pop_debug_group();
+
+            self.queue.submit(std::iter::once(fog_encoder.finish()));
         }
-        fog_encoder.pop_debug_group();
-
-        self.queue.submit(std::iter::once(fog_encoder.finish()));
 
         surface_texture.present();
 
