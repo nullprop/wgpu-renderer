@@ -85,23 +85,18 @@ fn depth_to_linear(depth: f32) -> f32 {
 
 @fragment
 fn fs_main(vert: FogVertexOutput) -> @location(0) vec4<f32> {
-    let cam_to_volume = vert.world_position.xyz - camera.position.xyz;
-    var distance_to_volume = length(cam_to_volume);
-    let direction = cam_to_volume / distance_to_volume;
-    // FIXME: geom depth should always be greater than the volume surface depth...
-    // why is this broken?
-    distance_to_volume = depth_to_linear(vert.clip_position.z);
-    let uv = vert.clip_position.xy / camera.planes.xy;
-    let depth = textureSample(t_geometry_depth, s_geometry_depth, uv);
-    let geometry_depth = depth_to_linear(depth) - distance_to_volume;
-    if (geometry_depth <= 0.0)
+    let direction = normalize(vert.world_position.xyz - camera.position.xyz);
+    let volume_depth = depth_to_linear(vert.clip_position.z);
+    let uv = vert.clip_position.xy / camera.planes.zw;
+    let geometry_depth = depth_to_linear(textureSample(t_geometry_depth, s_geometry_depth, uv));
+    let max_fog_depth = geometry_depth - volume_depth;
+    if (max_fog_depth <= 0.0)
     {
         return vec4<f32>(0.0);
     }
-    return vec4<f32>(1.0);
 
-    /*
-    let density = ray_march(vert.world_position.xyz, direction, geometry_depth);
+    let density = ray_march(vert.world_position.xyz, direction, max_fog_depth);
+//    return vec4<f32>(1.0, 1.0, 1.0, density);
 
     var in_light = 0.0;
     if (global_uniforms.use_shadowmaps > 0u) {
@@ -153,5 +148,4 @@ fn fs_main(vert: FogVertexOutput) -> @location(0) vec4<f32> {
     result = result / (result + vec3(1.0));
 
     return vec4(result, density * FOG_ALPHA);
-    */
 }

@@ -118,11 +118,11 @@ impl CameraUniform {
             proj: cgmath::Matrix4::identity().into(),
             inv_view_proj: cgmath::Matrix4::identity().into(),
             position: [0.0; 4],
-            planes: [NEAR_PLANE, FAR_PLANE, 0.0, 0.0],
+            planes: [NEAR_PLANE, FAR_PLANE, 1.0, 1.0],
         }
     }
 
-    pub fn update(&mut self, camera: &Camera) {
+    pub fn update(&mut self, camera: &Camera, config: &wgpu::SurfaceConfiguration) {
         let view = camera.get_view_matrix();
         let proj = camera.projection.get_matrix();
         self.view = view.into();
@@ -130,6 +130,7 @@ impl CameraUniform {
         let inv_view_proj = (proj * view).invert().unwrap();
         self.inv_view_proj = inv_view_proj.into();
         self.position = camera.position.to_homogeneous().into();
+        self.planes = [NEAR_PLANE, FAR_PLANE, config.width as f32, config.height as f32];
     }
 }
 
