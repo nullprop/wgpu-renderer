@@ -582,7 +582,7 @@ impl State {
 
         // Update the light
         self.light_uniform.position[0] = f32::sin(time.as_secs_f32() * 0.5) * 500.0;
-        self.light_uniform.position[1] = 300.0 + f32::sin(time.as_secs_f32() * 0.3) * 150.0;
+        self.light_uniform.position[1] = 250.0 + f32::sin(time.as_secs_f32() * 0.3) * 200.0;
         self.light_uniform.position[2] = f32::sin(time.as_secs_f32() * 0.8) * 100.0;
         self.light_uniform.update_matrices();
 
