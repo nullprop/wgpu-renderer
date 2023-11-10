@@ -21,8 +21,7 @@ Controls:
 - PBS
 - glTF models
 - 1 realtime pointlight
-- Shadow mapping*
-- Soft shadows*
+- Shadow mapping & PCF*
 - Volumetric fog*
 - Simple wgsl preprocessor for includes
 - Runs on WASM and native desktop
