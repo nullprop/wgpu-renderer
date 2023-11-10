@@ -7,7 +7,7 @@ A small [wgpu](https://github.com/gfx-rs/wgpu) renderer written in [Rust](https:
 ## Try it out
 [rasanen.dev/wgpu-renderer](https://rasanen.dev/wgpu-renderer)  
 Note: the .wasm is about 50 MB because it embeds Sponza.  
-Note: shadowmaps are not enabled on WebGL.
+Note: shadowmaps and volumetric fog are not enabled on WebGL.
 
 Controls:
 - WASD - Move horizontally
@@ -23,6 +23,7 @@ Controls:
 - 1 realtime pointlight
 - Shadow mapping*
 - Soft shadows*
+- Volumetric fog*
 - Simple wgsl preprocessor for includes
 - Runs on WASM and native desktop
   - Tested on:
@@ -34,7 +35,7 @@ Controls:
 *Native only
 
 TODO:
-- Get shadowmaps to work on WebGL?
+- Get shadowmaps & volumetric fog to work on WebGL?
 - Improve shadowmap artifacts
 - Transparency
 - Refactor
@@ -64,6 +65,7 @@ WASM requires:
 - [wgpu examples](https://github.com/gfx-rs/wgpu/blob/master/wgpu/examples)
 - [Learn Wgpu](https://sotrh.github.io/learn-wgpu/)
 - [Learn OpenGL: PBR](https://learnopengl.com/PBR/Theory)
+- [42yeah: Raymarching Clouds](https://blog.42yeah.is/rendering/2023/02/11/clouds.html)
 
 ## Assets
 - Sponza
