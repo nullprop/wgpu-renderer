@@ -1,4 +1,4 @@
-fn sample_direct_light(index: i32, light_coords: vec4<f32>) -> f32 {
+fn sample_direct_light_index(index: i32, light_coords: vec4<f32>) -> f32 {
     if (light_coords.w <= 0.0) {
         return 0.0;
     }
@@ -26,4 +26,36 @@ fn sample_direct_light(index: i32, light_coords: vec4<f32>) -> f32 {
     }
 
     return total_sample;
+}
+
+fn sample_direct_light(world_position: vec4<f32>) -> f32 {
+    var in_light = 0.0;
+    if (global_uniforms.use_shadowmaps > 0u) {
+        for (var i: i32 = 0; i < 6; i++) {
+            let light_coords = light.matrices[i] * world_position;
+            let light_dir = normalize(light_coords.xyz);
+            let bias = 0.01;
+            // z can never be smaller than this inside 90 degree frustum
+            if (light_dir.z < INV_SQRT_3 - bias) {
+                continue;
+            }
+            // x and y can never be larger than this inside frustum
+            if (abs(light_dir.y) > INV_SQRT_2 + bias) {
+                continue;
+            }
+            if (abs(light_dir.x) > INV_SQRT_2 + bias) {
+                continue;
+            }
+
+            in_light = sample_direct_light_index(i, light_coords);
+            // TODO should break even if 0 since we're inside frustum.
+            // See if causes issues with bias overlap between directions.
+            if (in_light > 0.0) {
+                break;
+            }
+        }
+    } else {
+        in_light = 1.0;
+    }
+    return in_light;
 }
