@@ -47,9 +47,9 @@ var s_geometry_depth: sampler;
 
 fn fog_noise(pos: vec3<f32>) -> f32 {
     var p = pos * FOG_SCALE;
-    p.x += global_uniforms.time * 0.01;
+    p.x += global_uniforms.time * 0.1;
     p.y += global_uniforms.time * 0.2;
-    p.z += sin(global_uniforms.time * 0.1) * 0.1;
+    p.z += sin(global_uniforms.time * 0.1) * 0.2;
     return fbm(p);
 }
 
@@ -59,8 +59,8 @@ fn ray_march(origin: vec3<f32>, direction: vec3<f32>, scene_depth: f32) -> f32 {
     for (var i = 0; i < FOG_MAX_STEPS; i++)
     {
         let noise = fog_noise(origin + direction * depth);
-        depth += FOG_MAX_DIST / f32(FOG_MAX_STEPS);
-        let blend = min(depth / FOG_BLEND_DIST, 1.0);
+        depth += FOG_STEP_SIZE;
+        let blend = min(f32(i + 1) / f32(FOG_BLEND_STEPS), 1.0);
         let contribution = FOG_DENSITY / f32(FOG_MAX_STEPS);
         density += blend * noise * contribution;
         if (density >= 1.0)
@@ -96,7 +96,6 @@ fn fs_main(vert: FogVertexOutput) -> @location(0) vec4<f32> {
     }
 
     let density = ray_march(vert.world_position.xyz, direction, max_fog_depth);
-//    return vec4<f32>(1.0, 1.0, 1.0, density);
 
     var in_light = 0.0;
     if (global_uniforms.use_shadowmaps > 0u) {
@@ -127,16 +126,16 @@ fn fs_main(vert: FogVertexOutput) -> @location(0) vec4<f32> {
         in_light = 1.0;
     }
 
-    var base_color = vec3<f32>(mix(0.8, 0.4, density));
-    let ambient_strength = 0.02;
+    var base_color = vec3<f32>(mix(0.5, 0.1, density));
+    let ambient_strength = 0.04;
     let ambient_color = base_color * ambient_strength;
 
     var radiance = vec3<f32>(0.0);
     if (in_light > 0.0) {
         // attenuation
         let light_dist = length(light.position - vert.world_position.xyz);
-        let coef_a = 2.0;
-        let coef_b = 4.0;
+        let coef_a = 0.0;
+        let coef_b = 1.0;
         let light_attenuation = 1.0 / (1.0 + coef_a * light_dist + coef_b * light_dist * light_dist);
 
         radiance = light.color.rgb * light.color.a * light_attenuation * in_light;
