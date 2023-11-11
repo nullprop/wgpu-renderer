@@ -58,7 +58,7 @@ fn fog_noise(pos: vec3<f32>) -> f32 {
     p2.z += sin(global_uniforms.time * 0.1) * 0.5;
     let noise2 = fbm(p2);
 
-    return 0.8 * noise1 + 0.2 * noise2;
+    return 0.8 * noise1 + 0.15 * noise2 + 0.05;
 }
 
 fn ray_march(origin: vec3<f32>, direction: vec3<f32>, max_depth: f32, max_steps: i32, step_size: f32, fog_density: f32) -> vec2<f32> {
@@ -72,9 +72,8 @@ fn ray_march(origin: vec3<f32>, direction: vec3<f32>, max_depth: f32, max_steps:
             break;
         }
         let noise = fog_noise(origin + direction * depth);
-        let blend = min(f32(i + 1) / f32(FOG_BLEND_STEPS), 1.0);
         let contribution = fog_density / f32(max_steps);
-        density += blend * noise * contribution;
+        density += noise * contribution;
         if (density >= 1.0)
         {
             density = 1.0;
@@ -87,7 +86,14 @@ fn ray_march(origin: vec3<f32>, direction: vec3<f32>, max_depth: f32, max_steps:
 
 fn ray_march_fog(origin: vec3<f32>, direction: vec3<f32>, scene_depth: f32) -> vec3<f32> {
     // march into the fog volume
-    let fog_march = ray_march(origin, direction, scene_depth, FOG_MAX_STEPS, FOG_STEP_SIZE, FOG_DENSITY);
+    let fog_march = ray_march(
+        origin,
+        direction,
+        scene_depth,
+        FOG_MAX_STEPS,
+        FOG_STEP_SIZE,
+        FOG_DENSITY
+    );
     let fog_density = fog_march.x;
     let fog_depth = fog_march.y;
     let fog_end_position = origin + direction * fog_depth;
@@ -96,7 +102,14 @@ fn ray_march_fog(origin: vec3<f32>, direction: vec3<f32>, scene_depth: f32) -> v
     let fog_to_light = light.position - fog_end_position;
     let max_light_dist = length(fog_to_light);
     let light_direction = fog_to_light / max_light_dist;
-    let light_march = ray_march(fog_end_position, light_direction, max_light_dist, FOG_LIGHT_MAX_STEPS, FOG_LIGHT_STEP_SIZE, FOG_LIGHT_DENSITY);
+    let light_march = ray_march(
+        fog_end_position,
+        light_direction,
+        max_light_dist,
+        FOG_LIGHT_MAX_STEPS,
+        FOG_LIGHT_STEP_SIZE,
+        FOG_LIGHT_DENSITY
+    );
     let occlusion = light_march.x;
 
     return vec3<f32>(fog_density, fog_depth, occlusion);
@@ -127,7 +140,7 @@ fn fs_main(vert: FogVertexOutput) -> @location(0) vec4<f32> {
     let fog_depth = march_result.y;
     let occlusion = march_result.z;
 
-    var base_color = vec3<f32>(mix(0.5, 0.1, fog_density));
+    let base_color = vec3<f32>(mix(0.5, 0.1, fog_density));
     let ambient_strength = 0.05;
     let ambient_color = base_color * ambient_strength;
 
