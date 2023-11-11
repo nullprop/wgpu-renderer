@@ -141,7 +141,7 @@ fn fs_main(vert: FogVertexOutput) -> @location(0) vec4<f32> {
     let occlusion = march_result.z;
 
     let base_color = vec3<f32>(mix(0.5, 0.1, fog_density));
-    let ambient_strength = 0.05;
+    let ambient_strength = FOG_AMBIENT;
     let ambient_color = base_color * ambient_strength;
 
     var radiance = vec3<f32>(0.0);

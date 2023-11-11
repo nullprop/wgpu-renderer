@@ -12,4 +12,4 @@ const FOG_LIGHT_STEP_SIZE = 10.0;
 const FOG_DENSITY = 2.0;
 const FOG_LIGHT_DENSITY = 3.0;
 const FOG_ALPHA = 1.0;
-const FOG_BLEND_STEPS = 4;
+const FOG_AMBIENT = 0.06;
