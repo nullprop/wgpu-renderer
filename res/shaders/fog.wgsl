@@ -140,7 +140,7 @@ fn fs_main(vert: FogVertexOutput) -> @location(0) vec4<f32> {
     let fog_depth = march_result.y;
     let occlusion = march_result.z;
 
-    let base_color = vec3<f32>(mix(0.5, 0.1, fog_density));
+    let base_color = vec3<f32>(mix(FOG_DENSITY_COLOR.x, FOG_DENSITY_COLOR.y, fog_density));
     let ambient_strength = FOG_AMBIENT;
     let ambient_color = base_color * ambient_strength;
 
