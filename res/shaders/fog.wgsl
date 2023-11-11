@@ -112,10 +112,10 @@ fn fs_main(vert: FogVertexOutput) -> @location(0) vec4<f32> {
     let ambient_color = base_color * ambient_strength;
 
     var radiance = vec3<f32>(0.0);
-    let in_light = sample_direct_light(vert.world_position);
+    let fog_position = vert.world_position.xyz + direction * fog_depth;
+    let in_light = sample_direct_light(vec4<f32>(fog_position, 1.0));
     if (in_light > 0.0) {
         // attenuation
-        let fog_position = vert.world_position.xyz + direction * fog_depth;
         let light_dist = length(light.position - fog_position);
         let coef_a = 0.0;
         let coef_b = 1.0;
