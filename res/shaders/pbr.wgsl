@@ -73,21 +73,21 @@ var<uniform> material_uniform: MaterialUniform;
 @fragment
 fn fs_main(vert: VertexOutput) -> @location(0) vec4<f32> {
     // textures
-    let object_color: vec4<f32> = textureSample(t_diffuse, s_diffuse, vert.tex_coords);
-    let object_normal: vec4<f32> = textureSample(t_normal, s_normal, vert.tex_coords);
-    let object_roughness_metalness: vec4<f32> = textureSample(
+    let tex_diffuse: vec4<f32> = textureSample(t_diffuse, s_diffuse, vert.tex_coords);
+    let tex_normal: vec4<f32> = textureSample(t_normal, s_normal, vert.tex_coords);
+    let tex_rm: vec4<f32> = textureSample(
         t_roughness_metalness, s_roughness_metalness, vert.tex_coords);
 
-    let albedo = object_color.xyz;
-    let roughness = object_roughness_metalness.y * material_uniform.rougness_factor;
-    let metalness = object_roughness_metalness.z * material_uniform.metallic_factor;
+    let albedo = tex_diffuse.rgb;
+    let roughness = tex_rm.g * material_uniform.roughness_factor;
+    let metalness = tex_rm.b * material_uniform.metallic_factor;
 
     var total_radiance: vec3<f32>;
 
     let in_light = sample_direct_light(vert.world_position);
     if (in_light > 0.0) {
         // lighting vecs
-        let normal_dir = object_normal.xyz * 2.0 - 1.0;
+        let normal_dir = tex_normal.xyz * 2.0 - 1.0;
         var light_dir = normalize(vert.tangent_light_position - vert.tangent_position);
         let view_dir = normalize(vert.tangent_view_position - vert.tangent_position);
         let half_dir = normalize(view_dir + light_dir);
@@ -122,5 +122,5 @@ fn fs_main(vert: VertexOutput) -> @location(0) vec4<f32> {
     // tonemap
     result = result / (result + vec3(1.0));
 
-    return vec4<f32>(result, object_color.a);
+    return vec4<f32>(result, tex_diffuse.a);
 }

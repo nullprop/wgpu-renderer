@@ -29,7 +29,7 @@ var<uniform> global_uniforms: GlobalUniforms;
 
 struct MaterialUniform {
     metallic_factor: f32,
-    rougness_factor: f32,
+    roughness_factor: f32,
     _padding1: f32,
     _padding2: f32,
 }
