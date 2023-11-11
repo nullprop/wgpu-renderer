@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use wgpu::util::DeviceExt;
 use winit::{event::*, window::Window};
+use crate::core::material::MaterialUniform;
 
 use super::camera::{Camera, CameraController, CameraUniform};
 use super::instance::{Instance, InstanceRaw};
@@ -305,6 +306,7 @@ impl State {
 
         let geometry_depth_bind_group = State::create_geometry_depth_bind_group(&device, &geometry_depth_bind_group_layout, &geometry_depth_texture);
 
+        let material_uniform_size = mem::size_of::<MaterialUniform>() as u64;
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
@@ -357,6 +359,17 @@ impl State {
                         binding: 5,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                    // material uniform
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 6,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(material_uniform_size),
+                        },
                         count: None,
                     },
                 ],

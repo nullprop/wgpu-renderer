@@ -67,6 +67,9 @@ var t_roughness_metalness: texture_2d<f32>;
 @group(2) @binding(5)
 var s_roughness_metalness: sampler;
 
+@group(2) @binding(6)
+var<uniform> material_uniform: MaterialUniform;
+
 @fragment
 fn fs_main(vert: VertexOutput) -> @location(0) vec4<f32> {
     // textures
@@ -76,10 +79,9 @@ fn fs_main(vert: VertexOutput) -> @location(0) vec4<f32> {
         t_roughness_metalness, s_roughness_metalness, vert.tex_coords);
 
     let albedo = object_color.xyz;
-    // TODO: pass factors to shader
-    let roughness = object_roughness_metalness.y * 1.0;
-    let metalness = object_roughness_metalness.z * 1.0;
-    
+    let roughness = object_roughness_metalness.y * material_uniform.rougness_factor;
+    let metalness = object_roughness_metalness.z * material_uniform.metallic_factor;
+
     var total_radiance: vec3<f32>;
 
     let in_light = sample_direct_light(vert.world_position);

@@ -1,3 +1,4 @@
+use wgpu::util::DeviceExt;
 use crate::core::texture::Texture;
 
 pub struct Material {
@@ -5,11 +6,15 @@ pub struct Material {
     pub diffuse_texture: Texture,
     pub normal_texture: Texture,
     pub metallic_roughness_texture: Texture,
-    // TODO pass to shader
-    pub metallic_factor: f32,
-    // TODO pass to shader
-    pub roughness_factor: f32,
+    pub material_uniform: MaterialUniform,
     pub bind_group: wgpu::BindGroup,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct MaterialUniform {
+    // metallic, roughness, none, none
+    pub factors: [f32; 4],
 }
 
 impl Material {
@@ -23,6 +28,15 @@ impl Material {
         roughness_factor: f32,
         layout: &wgpu::BindGroupLayout,
     ) -> Self {
+        let material_uniform = MaterialUniform {
+            factors: [metallic_factor, roughness_factor, 0.0, 0.0]
+        };
+        let material_uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Material Uniform UB"),
+            contents: bytemuck::cast_slice(&[material_uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout,
             entries: &[
@@ -53,6 +67,11 @@ impl Material {
                     binding: 5,
                     resource: wgpu::BindingResource::Sampler(&metallic_roughness_texture.sampler),
                 },
+                // uniform
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: material_uniform_buffer.as_entire_binding(),
+                }
             ],
             label: None,
         });
@@ -62,8 +81,7 @@ impl Material {
             diffuse_texture,
             normal_texture,
             metallic_roughness_texture,
-            metallic_factor,
-            roughness_factor,
+            material_uniform,
             bind_group,
         }
     }

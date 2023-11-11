@@ -27,6 +27,13 @@ struct GlobalUniforms {
 @group(0) @binding(2)
 var<uniform> global_uniforms: GlobalUniforms;
 
+struct MaterialUniform {
+    metallic_factor: f32,
+    rougness_factor: f32,
+    _padding1: f32,
+    _padding2: f32,
+}
+
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) tex_coords: vec2<f32>,
