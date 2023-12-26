@@ -463,7 +463,7 @@ impl State {
             &[ModelVertex::desc(), InstanceRaw::desc()],
             "geometry pass",
             false,
-            false,
+            true,
             true,
             Some(wgpu::Face::Back),
         );

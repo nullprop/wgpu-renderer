@@ -36,10 +36,7 @@ Controls:
 TODO:
 - Get shadowmaps & volumetric fog to work on WebGL?
 - Improve shadowmap artifacts
-- Transparency
-- Refactor
-    - Simplify/abstract renderpasses
-    - `src/core/state.rs` is a mess
+- Fix funky transparency around plants
 - SSAO
 - Bloom
 - AA
