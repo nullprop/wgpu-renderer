@@ -14,7 +14,5 @@ const FOG_LIGHT_STEP_SIZE = 10.0;
 const FOG_DENSITY = 2.0;
 const FOG_LIGHT_DENSITY = 3.0;
 const FOG_ALPHA = 1.0;
-const FOG_AMBIENT = 0.06;
 const FOG_DENSITY_COLOR = vec2<f32>(0.5, 0.1);
 
-const PBR_AMBIENT = 0.02;

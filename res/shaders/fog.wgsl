@@ -140,24 +140,24 @@ fn fs_main(vert: FogVertexOutput) -> @location(0) vec4<f32> {
     let fog_depth = march_result.y;
     let occlusion = march_result.z;
 
+    let fog_position = vert.world_position.xyz + direction * fog_depth;
+    let light_dist = length(light.position - fog_position);
+
     let base_color = vec3<f32>(mix(FOG_DENSITY_COLOR.x, FOG_DENSITY_COLOR.y, fog_density));
-    let ambient_strength = FOG_AMBIENT;
-    let ambient_color = base_color * ambient_strength;
+    var ambient = 2.0 * sample_ambient_light(light.color, light_dist, 1.0);
+    ambient *= base_color;
 
     var radiance = vec3<f32>(0.0);
-    let fog_position = vert.world_position.xyz + direction * fog_depth;
     let in_light = sample_direct_light(vec4<f32>(fog_position, 1.0));
     if (in_light > 0.0) {
         // attenuation
-        let light_dist = length(light.position - fog_position);
         let coef_a = 0.0;
         let coef_b = 1.0;
         let light_attenuation = 1.0 / (1.0 + coef_a * light_dist + coef_b * light_dist * light_dist);
-
         radiance = light.color.rgb * light.color.a * light_attenuation * in_light * (1.0 - occlusion);
     }
 
-    var result = ambient_color + radiance;
+    var result = ambient + radiance;
 
     // tonemap
     result = result / (result + vec3(1.0));

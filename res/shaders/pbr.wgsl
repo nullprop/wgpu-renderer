@@ -84,23 +84,27 @@ fn fs_main(vert: VertexOutput) -> @location(0) vec4<f32> {
 
     var total_radiance: vec3<f32>;
 
+    let normal_dir = tex_normal.xyz * 2.0 - 1.0;
+    var light_dir = normalize(vert.tangent_light_position - vert.tangent_position);
+    let surface_light_dot = dot(normal_dir, light_dir);
+    let light_dist = length(light.position - vert.world_position.xyz);
+
+    // attenuation
+    let coef_a = 0.0;
+    let coef_b = 1.0;
+    let light_attenuation = 1.0 / (1.0 + coef_a * light_dist + coef_b * light_dist * light_dist);
+
+    let direct_light = light.color.rgb * light.color.a * light_attenuation;
+
     let in_light = sample_direct_light(vert.world_position);
     if (in_light > 0.0) {
         // lighting vecs
-        let normal_dir = tex_normal.xyz * 2.0 - 1.0;
-        var light_dir = normalize(vert.tangent_light_position - vert.tangent_position);
         let view_dir = normalize(vert.tangent_view_position - vert.tangent_position);
         let half_dir = normalize(view_dir + light_dir);
 
-        // attenuation
-        let light_dist = length(light.position - vert.world_position.xyz);
-        let coef_a = 0.0;
-        let coef_b = 1.0;
-        let light_attenuation = 1.0 / (1.0 + coef_a * light_dist + coef_b * light_dist * light_dist);
-
         // radiance
-        let radiance_strength = max(dot(normal_dir, light_dir), 0.0);
-        let radiance = radiance_strength * light.color.rgb * light.color.a * light_attenuation * in_light;
+        let radiance_strength = max(surface_light_dot, 0.0);
+        let radiance = radiance_strength * direct_light * in_light;
 
         // brdf shading
         total_radiance += radiance * brdf(
@@ -114,10 +118,10 @@ fn fs_main(vert: VertexOutput) -> @location(0) vec4<f32> {
         );
     }
 
-    // ambient
-    let ambient_color = PBR_AMBIENT * albedo;
+    var ambient = sample_ambient_light(light.color, light_dist, surface_light_dot);
+    ambient *= albedo;
 
-    var result = ambient_color + total_radiance;
+    var result = ambient + total_radiance;
 
     // tonemap
     result = result / (result + vec3(1.0));

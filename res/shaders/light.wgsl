@@ -59,3 +59,20 @@ fn sample_direct_light(world_position: vec4<f32>) -> f32 {
     }
     return in_light;
 }
+
+fn sample_ambient_light(light: vec4<f32>, light_dist: f32, surface_light_dot: f32) -> vec3<f32> {
+    // base ambient
+    var ambient = vec3(0.01);
+
+    // lower attenuation to reduce light bleed
+    let diff_coef_a = -0.75;
+    let diff_coef_b = 0.25;
+    let diff_light_attenuation = 1.0 / (1.0 + diff_coef_a * light_dist + diff_coef_b * light_dist * light_dist);
+    let diff_direct_light = light.rgb * light.a * diff_light_attenuation;
+
+    // very rough bounce light estimation
+    let diffuse_mult = max(surface_light_dot, 0.0);
+    ambient += diffuse_mult * 0.03 * diff_direct_light;
+
+    return ambient;
+}
