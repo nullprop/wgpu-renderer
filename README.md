@@ -5,7 +5,7 @@ A small [wgpu](https://github.com/gfx-rs/wgpu) renderer written in [Rust](https:
 ![](demo.gif)
 
 ## Try it out
-[rasanen.dev/wgpu-renderer](https://rasanen.dev/wgpu-renderer)  
+[nullprop.sh/wgpu-renderer](https://nullprop.sh/wgpu-renderer)  
 Note: the .wasm is about 50 MB because it embeds Sponza.  
 Note: shadowmaps and volumetric fog are not enabled on WebGL.
 
